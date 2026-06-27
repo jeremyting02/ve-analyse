@@ -701,9 +701,9 @@ async function runAnalyse() {
     if (result.output_saved) {
       setStatus("Analysis complete.", "status-ok");
     } else if (result.output_save_attempted) {
-      setStatus("Analysis complete. Output path was not writable, so use Download CSV.", "status-warning");
+      setStatus("Analysis complete. Output path was not writable, so use Download New VE Table.", "status-warning");
     } else {
-      setStatus("Analysis complete. Use Download CSV to save.", "status-warning");
+      setStatus("Analysis complete. Use Download New VE Table to save.", "status-warning");
     }
     await saveState();
   } catch (error) {
@@ -719,14 +719,14 @@ function resultSummaryText(result) {
     return [
       result.summary_text,
       "No output path entered.",
-      "Use Download CSV below to save the generated VE table from the browser.",
+      "Use Download New VE Table below to save the generated VE table from the browser.",
     ].join("\n");
   }
   return [
     result.summary_text,
     `Could not write: ${result.output_path}`,
     result.output_error,
-    "Use Download CSV below to save the generated VE table from the browser.",
+    "Use Download New VE Table below to save the generated VE table from the browser.",
   ].filter(Boolean).join("\n");
 }
 
@@ -746,7 +746,7 @@ function renderDownload(result) {
   link.className = "download-link";
   link.href = latestDownloadUrl;
   link.download = result.output_filename || "ve-new.csv";
-  link.textContent = result.output_saved ? "Download CSV copy" : "Download CSV";
+  link.textContent = "Download New VE Table";
   container.append(link);
 }
 
