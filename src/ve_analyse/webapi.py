@@ -54,6 +54,9 @@ def save_state_payload(payload: dict[str, Any], path: Path | None = None) -> dic
         parameters=_string_dict(payload.get("parameters")),
         graph_log=_as_string(payload.get("graph_log")),
         graph_variables=_string_list(payload.get("graph_variables")),
+        graph_groups=_dict_list(payload.get("graph_groups")),
+        active_graph_id=_as_string(payload.get("active_graph_id")),
+        graph_zoom=_plain_dict(payload.get("graph_zoom")),
         active_tab=_as_string(payload.get("active_tab")) or "Graphs",
         geometry=_as_string(payload.get("geometry")),
     )
@@ -209,3 +212,13 @@ def _string_dict(value: Any) -> dict[str, str]:
         for key, item in value.items()
         if isinstance(key, str)
     }
+
+
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _plain_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}

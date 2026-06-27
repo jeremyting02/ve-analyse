@@ -129,6 +129,9 @@ class VeAnalyseTests(unittest.TestCase):
                 parameters={"min_clt": "70"},
                 graph_log="run.msl",
                 graph_variables=["RPM", "MAP"],
+                graph_groups=[{"id": "g1", "name": "Engine", "variables": ["RPM", "MAP"]}],
+                active_graph_id="g1",
+                graph_zoom={"x_min": 1.0, "x_max": 2.0},
                 active_tab="Graph",
                 geometry="900x700+1+2",
             )
@@ -139,6 +142,9 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(loaded.log_paths, ["run.msl"])
             self.assertEqual(loaded.parameters["min_clt"], "70")
             self.assertEqual(loaded.graph_variables, ["RPM", "MAP"])
+            self.assertEqual(loaded.graph_groups[0]["name"], "Engine")
+            self.assertEqual(loaded.active_graph_id, "g1")
+            self.assertEqual(loaded.graph_zoom["x_max"], 2.0)
             self.assertEqual(loaded.active_tab, "Graph")
 
     def test_web_state_payload_adds_default_parameters(self):

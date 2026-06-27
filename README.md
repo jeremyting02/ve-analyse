@@ -70,7 +70,8 @@ http://127.0.0.1:8765/
 The web UI has:
 
 - a session sidebar for log/table/output paths,
-- stacked graph tracks where each selected log variable gets its own graph on a shared time axis,
+- multiple graph tracks where each graph can contain its own selected variables,
+- shared X-axis zooming with mouse wheel, drag-to-zoom, zoom-out, and reset controls,
 - grouped analysis tunables,
 - a results view showing the summary and changed VE cells,
 - automatic session restore using `.ve-analyse-web-state.json` in the directory where the server was launched.

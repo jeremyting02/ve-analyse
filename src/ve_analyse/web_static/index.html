@@ -61,7 +61,7 @@
           <div class="view-header">
             <div>
               <h2>Stacked Graphs</h2>
-              <p>Each selected variable gets its own track on a shared time axis.</p>
+              <p>Create multiple graph tracks and choose which variables appear on each one.</p>
             </div>
             <div class="toolbar">
               <label>
@@ -72,21 +72,35 @@
                 <span>Max points</span>
                 <input id="maxGraphPoints" type="number" min="200" step="100" value="2500">
               </label>
+              <button id="zoomOut" type="button">Zoom out</button>
+              <button id="resetZoom" type="button">Reset zoom</button>
             </div>
           </div>
 
           <div class="graph-layout">
-            <section class="variable-panel">
-              <div class="panel-heading">
-                <h3>Variables</h3>
-                <button id="loadVariables" type="button">Load</button>
-              </div>
-              <input id="variableFilter" type="search" placeholder="Filter variables">
-              <div id="variableList" class="variable-list"></div>
-            </section>
+            <aside class="graph-sidebar">
+              <section class="variable-panel">
+                <div class="panel-heading">
+                  <h3>Graphs</h3>
+                  <button id="addGraph" type="button">Add graph</button>
+                </div>
+                <div id="graphGroupList" class="graph-group-list"></div>
+              </section>
+
+              <section class="variable-panel">
+                <div class="panel-heading">
+                  <h3>Variables</h3>
+                  <button id="loadVariables" type="button">Load</button>
+                </div>
+                <div id="activeGraphLabel" class="graph-summary">Select a graph.</div>
+                <input id="variableFilter" type="search" placeholder="Filter variables">
+                <div id="variableList" class="variable-list"></div>
+              </section>
+            </aside>
 
             <section class="graph-panel">
               <div id="graphSummary" class="graph-summary">Add a log, then load variables.</div>
+              <div id="zoomSummary" class="zoom-summary">Full time range.</div>
               <div id="graphTracks" class="graph-tracks"></div>
             </section>
           </div>
@@ -179,4 +193,3 @@
     <script src="/static/app.js"></script>
   </body>
 </html>
-

@@ -22,6 +22,9 @@ class UiState:
     parameters: dict[str, str] = field(default_factory=dict)
     graph_log: str = ""
     graph_variables: list[str] = field(default_factory=list)
+    graph_groups: list[dict[str, Any]] = field(default_factory=list)
+    active_graph_id: str = ""
+    graph_zoom: dict[str, Any] = field(default_factory=dict)
     active_tab: str = "Analyse"
     geometry: str = ""
 
@@ -55,6 +58,9 @@ def load_ui_state(path: Path | None = None) -> UiState:
         parameters=_string_dict(raw.get("parameters")),
         graph_log=_as_string(raw.get("graph_log")),
         graph_variables=_string_list(raw.get("graph_variables")),
+        graph_groups=_dict_list(raw.get("graph_groups")),
+        active_graph_id=_as_string(raw.get("active_graph_id")),
+        graph_zoom=_plain_dict(raw.get("graph_zoom")),
         active_tab=_as_string(raw.get("active_tab")) or "Analyse",
         geometry=_as_string(raw.get("geometry")),
     )
@@ -89,3 +95,12 @@ def _string_dict(value: Any) -> dict[str, str]:
         if isinstance(key, str) and isinstance(item, str)
     }
 
+
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _plain_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
