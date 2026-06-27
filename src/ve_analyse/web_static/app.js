@@ -40,6 +40,7 @@ let currentColumns = [];
 let latestGraphPayload = null;
 let saveTimer = null;
 let dragZoom = null;
+let latestDownloadUrl = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -690,15 +691,52 @@ async function runAnalyse() {
       method: "POST",
       body: JSON.stringify(state),
     });
-    $("resultSummary").textContent = `${result.summary_text}\nWrote: ${result.output_path}`;
+    $("resultSummary").textContent = resultSummaryText(result);
+    renderDownload(result);
     renderVeTables(result.tables);
     renderUpdates(result.updates || []);
     activateView("Results");
-    setStatus("Analysis complete.", "status-ok");
+    if (result.output_saved) {
+      setStatus("Analysis complete.", "status-ok");
+    } else {
+      setStatus("Analysis complete. Output path was not writable, so use Download CSV.", "status-error");
+    }
     await saveState();
   } catch (error) {
     setStatus(error.message, "status-error");
   }
+}
+
+function resultSummaryText(result) {
+  if (result.output_saved) {
+    return `${result.summary_text}\nWrote: ${result.output_path}`;
+  }
+  return [
+    result.summary_text,
+    `Could not write: ${result.output_path}`,
+    result.output_error,
+    "Use Download CSV below to save the generated VE table from the browser.",
+  ].filter(Boolean).join("\n");
+}
+
+function renderDownload(result) {
+  const container = $("downloadResult");
+  container.innerHTML = "";
+  if (latestDownloadUrl) {
+    URL.revokeObjectURL(latestDownloadUrl);
+    latestDownloadUrl = null;
+  }
+  if (!result.output_csv) {
+    return;
+  }
+  const blob = new Blob([result.output_csv], { type: "text/csv;charset=utf-8" });
+  latestDownloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.className = "download-link";
+  link.href = latestDownloadUrl;
+  link.download = result.output_filename || "ve-new.csv";
+  link.textContent = result.output_saved ? "Download CSV copy" : "Download CSV";
+  container.append(link);
 }
 
 function renderVeTables(tables) {

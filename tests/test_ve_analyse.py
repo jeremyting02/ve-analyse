@@ -1,6 +1,7 @@
 import unittest
 from tempfile import TemporaryDirectory
 from pathlib import Path
+from unittest.mock import patch
 
 from ve_analyse.analyzer import AnalyzerConfig, analyze
 from ve_analyse.datalog import parse_datalog
@@ -188,10 +189,39 @@ class VeAnalyseTests(unittest.TestCase):
 
             self.assertTrue(output_path.exists())
             self.assertIn("MAP/RPM,1000,2000", output_path.read_text(encoding="utf-8"))
+            self.assertTrue(payload["output_saved"])
+            self.assertIn("MAP/RPM,1000,2000", payload["output_csv"])
             self.assertEqual(payload["summary"]["accepted_rows"], 3)
             self.assertEqual(payload["tables"]["old"]["x_bins"], [1000.0, 2000.0])
             self.assertEqual(payload["tables"]["old"]["y_bins"], [60.0, 40.0])
             self.assertEqual(payload["tables"]["old"]["values"][0], [60.0, 70.0])
+
+    def test_web_analyse_payload_returns_download_csv_when_output_write_fails(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log_path = root / "run.msl"
+            ve_path = root / "ve.tsv"
+            afr_path = root / "afr.tsv"
+            output_path = root / "blocked.csv"
+            log_path.write_text(LOG_TEXT, encoding="utf-8")
+            ve_path.write_text(VE_TABLE, encoding="utf-8")
+            afr_path.write_text(AFR_TABLE, encoding="utf-8")
+
+            with patch("pathlib.Path.write_text", side_effect=PermissionError("blocked")):
+                payload = analyse_payload(
+                    {
+                        "log_paths": [str(log_path)],
+                        "ve_path": str(ve_path),
+                        "afr_path": str(afr_path),
+                        "output_path": str(output_path),
+                        "parameters": {"min_samples": "1"},
+                    }
+                )
+
+            self.assertFalse(payload["output_saved"])
+            self.assertIn("blocked", payload["output_error"])
+            self.assertEqual(payload["output_filename"], "blocked.csv")
+            self.assertIn("MAP/RPM,1000,2000", payload["output_csv"])
 
     def test_web_table_payload_sorts_rpm_ascending_and_map_descending(self):
         table = parse_table(

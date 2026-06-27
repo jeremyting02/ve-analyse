@@ -405,6 +405,30 @@ select {
   white-space: pre-wrap;
 }
 
+.download-result {
+  margin-bottom: 14px;
+}
+
+.download-result:empty {
+  display: none;
+}
+
+.download-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.download-link:hover {
+  background: var(--accent-strong);
+}
+
 .ve-table-section {
   display: grid;
   grid-template-columns: repeat(2, minmax(320px, 1fr));
