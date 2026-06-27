@@ -691,6 +691,7 @@ async function runAnalyse() {
       body: JSON.stringify(state),
     });
     $("resultSummary").textContent = `${result.summary_text}\nWrote: ${result.output_path}`;
+    renderVeTables(result.tables);
     renderUpdates(result.updates || []);
     activateView("Results");
     setStatus("Analysis complete.", "status-ok");
@@ -698,6 +699,94 @@ async function runAnalyse() {
   } catch (error) {
     setStatus(error.message, "status-error");
   }
+}
+
+function renderVeTables(tables) {
+  const container = $("veTables");
+  container.innerHTML = "";
+  if (!tables?.old || !tables?.new) {
+    return;
+  }
+
+  const allValues = [...flattenTableValues(tables.old), ...flattenTableValues(tables.new)];
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
+  container.append(
+    buildVeTableCard("Old VE Table", tables.old, min, max),
+    buildVeTableCard("New VE Table", tables.new, min, max),
+  );
+}
+
+function buildVeTableCard(title, table, min, max) {
+  const card = document.createElement("section");
+  card.className = "ve-table-card";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const wrap = document.createElement("div");
+  wrap.className = "ve-grid-wrap";
+  const grid = document.createElement("table");
+  grid.className = "ve-grid";
+
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  const corner = document.createElement("th");
+  corner.className = "axis-corner";
+  corner.textContent = `${table.y_label || "MAP"}/${table.x_label || "RPM"}`;
+  headerRow.append(corner);
+  table.x_bins.forEach((rpm) => {
+    const th = document.createElement("th");
+    th.textContent = formatAxis(rpm);
+    headerRow.append(th);
+  });
+  thead.append(headerRow);
+
+  const tbody = document.createElement("tbody");
+  table.y_bins.forEach((mapValue, rowIndex) => {
+    const row = document.createElement("tr");
+    const axis = document.createElement("th");
+    axis.className = "y-axis";
+    axis.textContent = formatAxis(mapValue);
+    row.append(axis);
+    table.values[rowIndex].forEach((value) => {
+      const cell = document.createElement("td");
+      cell.className = "ve-cell";
+      cell.textContent = formatNumber(value);
+      cell.style.backgroundColor = veCellColor(value, min, max);
+      row.append(cell);
+    });
+    tbody.append(row);
+  });
+
+  grid.append(thead, tbody);
+  wrap.append(grid);
+  card.append(heading, wrap);
+  return card;
+}
+
+function flattenTableValues(table) {
+  return (table.values || [])
+    .flat()
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+}
+
+function veCellColor(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || !Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    return "hsl(95, 58%, 72%)";
+  }
+  const ratio = Math.max(0, Math.min(1, (number - min) / (max - min)));
+  const hue = 120 - ratio * 120;
+  const lightness = 78 - ratio * 12;
+  return `hsl(${hue}, 64%, ${lightness}%)`;
+}
+
+function formatAxis(value) {
+  const number = Number(value);
+  if (Number.isFinite(number) && Number.isInteger(number)) {
+    return String(number);
+  }
+  return formatNumber(value);
 }
 
 function renderUpdates(updates) {

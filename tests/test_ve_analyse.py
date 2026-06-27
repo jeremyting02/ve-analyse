@@ -7,7 +7,7 @@ from ve_analyse.datalog import parse_datalog
 from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
 from ve_analyse.state import UiState, load_ui_state, save_ui_state
 from ve_analyse.table import format_table, parse_table
-from ve_analyse.webapi import analyse_payload, graph_payload, state_payload
+from ve_analyse.webapi import analyse_payload, graph_payload, state_payload, table_payload
 
 
 LOG_TEXT = """"MS/Extra format hr_11d  ********: MS/Extra hr_11d  ***************"
@@ -189,6 +189,24 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertIn("MAP/RPM,1000,2000", output_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["summary"]["accepted_rows"], 3)
+            self.assertEqual(payload["tables"]["old"]["x_bins"], [1000.0, 2000.0])
+            self.assertEqual(payload["tables"]["old"]["y_bins"], [60.0, 40.0])
+            self.assertEqual(payload["tables"]["old"]["values"][0], [60.0, 70.0])
+
+    def test_web_table_payload_sorts_rpm_ascending_and_map_descending(self):
+        table = parse_table(
+            """MAP/RPM\t2000\t1000
+40\t50\t40
+60\t70\t60
+""",
+            source="inline",
+        )
+
+        payload = table_payload(table)
+
+        self.assertEqual(payload["x_bins"], [1000.0, 2000.0])
+        self.assertEqual(payload["y_bins"], [60.0, 40.0])
+        self.assertEqual(payload["values"], [[60.0, 70.0], [40.0, 50.0]])
 
 
 if __name__ == "__main__":

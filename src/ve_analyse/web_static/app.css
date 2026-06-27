@@ -405,6 +405,71 @@ select {
   white-space: pre-wrap;
 }
 
+.ve-table-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ve-table-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ve-table-card h3 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 15px;
+}
+
+.ve-grid-wrap {
+  overflow: auto;
+  max-height: 520px;
+}
+
+.ve-grid {
+  min-width: max-content;
+  font-variant-numeric: tabular-nums;
+}
+
+.ve-grid th,
+.ve-grid td {
+  min-width: 58px;
+  padding: 6px 8px;
+  text-align: right;
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ve-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.ve-grid .axis-corner,
+.ve-grid .y-axis {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #f7f9fc;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.ve-grid .axis-corner {
+  z-index: 4;
+}
+
+.ve-cell {
+  color: #111827;
+  font-weight: 650;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 .table-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -456,7 +521,8 @@ td:first-child {
   }
 
   .graph-layout,
-  .parameter-grid {
+  .parameter-grid,
+  .ve-table-section {
     grid-template-columns: 1fr;
   }
 

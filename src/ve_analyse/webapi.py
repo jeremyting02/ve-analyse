@@ -10,7 +10,7 @@ from .analyzer import AnalyzerConfig, analyze
 from .datalog import parse_datalog
 from .graph import build_plot_series, detect_time_column, numeric_columns
 from .state import UiState, load_ui_state, save_ui_state
-from .table import format_table, parse_table
+from .table import GridTable, format_table, parse_table
 
 
 DEFAULT_WEB_PARAMETERS: dict[str, str] = {
@@ -141,7 +141,28 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "summary": result.summary_dict(),
         "summary_text": result.summary_text(),
         "updates": updates,
+        "tables": {
+            "old": table_payload(ve_table),
+            "new": table_payload(result.table),
+        },
         "output_path": str(output_path),
+    }
+
+
+def table_payload(table: GridTable) -> dict[str, Any]:
+    """Return a display table with RPM ascending and MAP/load descending."""
+
+    x_order = sorted(range(len(table.x_bins)), key=lambda index: table.x_bins[index])
+    y_order = sorted(range(len(table.y_bins)), key=lambda index: table.y_bins[index], reverse=True)
+    return {
+        "x_label": table.x_label,
+        "y_label": table.y_label,
+        "x_bins": [table.x_bins[index] for index in x_order],
+        "y_bins": [table.y_bins[index] for index in y_order],
+        "values": [
+            [table.values[row_index][col_index] for col_index in x_order]
+            for row_index in y_order
+        ],
     }
 
 
