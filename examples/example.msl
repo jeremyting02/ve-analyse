@@ -1,0 +1,7 @@
+"MS/Extra format hr_11d  ********: MS/Extra hr_11d  ***************"
+"Capture Date: Sat Jun 27 11:40:15 NZST 2026, File author: TunerStudio MS Lite! version 3.3.01"
+Time	SecL	RPM/100	MAP	TP	O2	MAT	CLT	Engine	Gego	Gair	Gwarm	Gbaro	Gammae	TPSacc	Gve	PW	RPM
+s	sec	r100						bits	%	%	%	%	%	%	%	s
+0.000	152	10	40	10	2.500	-40.0	83.3	129	100	145	100	100	145	100	40	2.068	1000
+0.081	152	10	40	10	2.500	-40.0	83.3	129	100	145	100	100	145	100	40	2.117	1000
+0.162	152	10	40	10	2.500	-40.0	83.3	129	100	145	100	100	145	100	40	2.117	1000

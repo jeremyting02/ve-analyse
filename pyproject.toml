@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ve-analyse"
+version = "0.1.0"
+description = "MegaLogViewer-style VE table analyser for MegaSquirt data logs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "VE Analyse" }
+]
+dependencies = []
+
+[project.scripts]
+ve-analyse = "ve_analyse.cli:main"
+ve-analyse-ui = "ve_analyse.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
