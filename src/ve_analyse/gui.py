@@ -8,7 +8,8 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from .analyzer import AnalyzerConfig, analyze
-from .datalog import parse_datalog
+from .datalog import DataLog, parse_datalog
+from .graph import PlotSeries, build_plot_series, numeric_columns
 from .table import format_table, parse_table
 
 
@@ -19,6 +20,7 @@ class VeAnalyseApp(tk.Tk):
         self.geometry("820x620")
         self.minsize(720, 520)
         self.log_paths: list[Path] = []
+        self.parsed_logs: dict[Path, DataLog] = {}
 
         self.ve_path = tk.StringVar()
         self.afr_path = tk.StringVar()
@@ -30,14 +32,33 @@ class VeAnalyseApp(tk.Tk):
         self.max_cell_change = tk.StringVar(value="0.15")
         self.afr_0v = tk.StringVar(value="10")
         self.afr_5v = tk.StringVar(value="20")
+        self.graph_log = tk.StringVar()
+        self.graph_status = tk.StringVar(value="")
+        self.graph_series: list[PlotSeries] = []
+        self.graph_palette = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#17becf"]
 
         self._build()
 
     def _build(self) -> None:
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(2, weight=1)
+        self.rowconfigure(0, weight=1)
 
-        files = ttk.Frame(self, padding=12)
+        self.notebook = ttk.Notebook(self)
+        self.notebook.grid(row=0, column=0, sticky="nsew")
+
+        analyse_tab = ttk.Frame(self.notebook)
+        graph_tab = ttk.Frame(self.notebook)
+        self.notebook.add(analyse_tab, text="Analyse")
+        self.notebook.add(graph_tab, text="Graph")
+
+        self._build_analyse_tab(analyse_tab)
+        self._build_graph_tab(graph_tab)
+
+    def _build_analyse_tab(self, parent: ttk.Frame) -> None:
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(2, weight=1)
+
+        files = ttk.Frame(parent, padding=12)
         files.grid(row=0, column=0, sticky="ew")
         files.columnconfigure(1, weight=1)
 
@@ -54,7 +75,7 @@ class VeAnalyseApp(tk.Tk):
         self._file_row(files, 3, "AFR target", self.afr_path, self._choose_afr)
         self._file_row(files, 4, "Output", self.output_path, self._choose_output)
 
-        params = ttk.LabelFrame(self, text="Parameters", padding=12)
+        params = ttk.LabelFrame(parent, text="Parameters", padding=12)
         params.grid(row=1, column=0, sticky="ew", padx=12)
         for col in range(6):
             params.columnconfigure(col, weight=1)
@@ -66,18 +87,64 @@ class VeAnalyseApp(tk.Tk):
         self._entry(params, 1, 2, "Max cell change", self.max_cell_change)
         self._entry(params, 1, 4, "AFR at 0/5 V", self.afr_0v, self.afr_5v)
 
-        output = ttk.Frame(self, padding=12)
+        output = ttk.Frame(parent, padding=12)
         output.grid(row=2, column=0, sticky="nsew")
         output.columnconfigure(0, weight=1)
         output.rowconfigure(0, weight=1)
         self.summary = tk.Text(output, height=12, wrap="word")
         self.summary.grid(row=0, column=0, sticky="nsew")
 
-        actions = ttk.Frame(self, padding=(12, 0, 12, 12))
+        actions = ttk.Frame(parent, padding=(12, 0, 12, 12))
         actions.grid(row=3, column=0, sticky="ew")
         actions.columnconfigure(0, weight=1)
         self.run_button = ttk.Button(actions, text="Analyse", command=self._run)
         self.run_button.grid(row=0, column=1, sticky="e")
+
+    def _build_graph_tab(self, parent: ttk.Frame) -> None:
+        parent.columnconfigure(1, weight=1)
+        parent.rowconfigure(1, weight=1)
+
+        toolbar = ttk.Frame(parent, padding=12)
+        toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+        toolbar.columnconfigure(1, weight=1)
+        ttk.Label(toolbar, text="Log").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self.graph_log_combo = ttk.Combobox(toolbar, textvariable=self.graph_log, state="readonly")
+        self.graph_log_combo.grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        ttk.Button(toolbar, text="Load variables", command=self._load_graph_variables).grid(row=0, column=2)
+
+        sidebar = ttk.Frame(parent, padding=(12, 0, 6, 12))
+        sidebar.grid(row=1, column=0, sticky="ns")
+        sidebar.rowconfigure(1, weight=1)
+        ttk.Label(sidebar, text="Variables").grid(row=0, column=0, sticky="w", pady=(0, 4))
+        variable_frame = ttk.Frame(sidebar)
+        variable_frame.grid(row=1, column=0, sticky="ns")
+        variable_frame.rowconfigure(0, weight=1)
+        self.graph_variable_list = tk.Listbox(
+            variable_frame,
+            selectmode=tk.EXTENDED,
+            exportselection=False,
+            width=24,
+            height=20,
+        )
+        self.graph_variable_list.grid(row=0, column=0, sticky="ns")
+        variable_scroll = ttk.Scrollbar(variable_frame, orient=tk.VERTICAL, command=self.graph_variable_list.yview)
+        variable_scroll.grid(row=0, column=1, sticky="ns")
+        self.graph_variable_list.configure(yscrollcommand=variable_scroll.set)
+        self.graph_variable_list.bind("<<ListboxSelect>>", lambda _event: self._plot_selected_variables())
+
+        graph_buttons = ttk.Frame(sidebar)
+        graph_buttons.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        ttk.Button(graph_buttons, text="Plot", command=self._plot_selected_variables).grid(row=0, column=0, padx=(0, 6))
+        ttk.Button(graph_buttons, text="Clear", command=self._clear_graph_selection).grid(row=0, column=1)
+
+        graph_area = ttk.Frame(parent, padding=(6, 0, 12, 12))
+        graph_area.grid(row=1, column=1, sticky="nsew")
+        graph_area.columnconfigure(0, weight=1)
+        graph_area.rowconfigure(0, weight=1)
+        self.graph_canvas = tk.Canvas(graph_area, bg="#ffffff", highlightthickness=1, highlightbackground="#c9ced6")
+        self.graph_canvas.grid(row=0, column=0, sticky="nsew")
+        self.graph_canvas.bind("<Configure>", lambda _event: self._draw_graph())
+        ttk.Label(graph_area, textvariable=self.graph_status).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
     def _file_row(
         self,
@@ -119,10 +186,18 @@ class VeAnalyseApp(tk.Tk):
             if path_obj not in self.log_paths:
                 self.log_paths.append(path_obj)
                 self.log_list.insert(tk.END, str(path_obj))
+        self._refresh_graph_logs()
 
     def _clear_logs(self) -> None:
         self.log_paths.clear()
+        self.parsed_logs.clear()
         self.log_list.delete(0, tk.END)
+        self.graph_log.set("")
+        self._refresh_graph_logs()
+        self.graph_variable_list.delete(0, tk.END)
+        self.graph_series = []
+        self.graph_status.set("")
+        self._draw_graph()
 
     def _choose_ve(self) -> None:
         self._choose_file(self.ve_path, "Choose VE table")
@@ -198,12 +273,188 @@ class VeAnalyseApp(tk.Tk):
         self.summary.insert(tk.END, text)
         self.summary.configure(state=tk.NORMAL)
 
+    def _refresh_graph_logs(self) -> None:
+        values = [str(path) for path in self.log_paths]
+        self.graph_log_combo.configure(values=values)
+        if not values:
+            self.graph_log.set("")
+            return
+        if self.graph_log.get() not in values:
+            self.graph_log.set(values[0])
+
+    def _selected_graph_path(self) -> Path | None:
+        selected = self.graph_log.get()
+        if selected:
+            return Path(selected)
+        if self.log_paths:
+            return self.log_paths[0]
+        return None
+
+    def _get_graph_log(self) -> DataLog:
+        path = self._selected_graph_path()
+        if path is None:
+            raise ValueError("Add a data log before opening the graph.")
+        if path not in self.parsed_logs:
+            self.parsed_logs[path] = parse_datalog(path)
+        return self.parsed_logs[path]
+
+    def _load_graph_variables(self) -> None:
+        try:
+            log = self._get_graph_log()
+        except Exception as exc:
+            messagebox.showerror("VE Analyse", str(exc))
+            return
+
+        columns = numeric_columns(log)
+        self.graph_variable_list.delete(0, tk.END)
+        for column in columns:
+            self.graph_variable_list.insert(tk.END, column)
+
+        preferred = {"rpm", "map", "o2", "afr", "pw", "sparkangle"}
+        for index, column in enumerate(columns):
+            normalized = "".join(character.lower() for character in column if character.isalnum())
+            if normalized in preferred:
+                self.graph_variable_list.selection_set(index)
+
+        self._plot_selected_variables()
+
+    def _plot_selected_variables(self) -> None:
+        if self.graph_variable_list.size() == 0 and self.log_paths:
+            self._load_graph_variables()
+            return
+
+        selected = [
+            self.graph_variable_list.get(index)
+            for index in self.graph_variable_list.curselection()
+        ]
+        if not selected:
+            self.graph_series = []
+            self.graph_status.set("")
+            self._draw_graph()
+            return
+
+        try:
+            log = self._get_graph_log()
+            self.graph_series = build_plot_series(log, selected)
+            point_count = sum(len(series.points) for series in self.graph_series)
+            self.graph_status.set(f"{len(self.graph_series)} variables, {point_count} plotted points")
+            self._draw_graph()
+        except Exception as exc:
+            messagebox.showerror("VE Analyse", str(exc))
+
+    def _clear_graph_selection(self) -> None:
+        self.graph_variable_list.selection_clear(0, tk.END)
+        self.graph_series = []
+        self.graph_status.set("")
+        self._draw_graph()
+
+    def _draw_graph(self) -> None:
+        canvas = getattr(self, "graph_canvas", None)
+        if canvas is None:
+            return
+
+        canvas.delete("all")
+        width = max(1, canvas.winfo_width())
+        height = max(1, canvas.winfo_height())
+        left = 64
+        right = 164
+        top = 22
+        bottom = 42
+        plot_left = left
+        plot_right = max(left + 10, width - right)
+        plot_top = top
+        plot_bottom = max(top + 10, height - bottom)
+        plot_width = plot_right - plot_left
+        plot_height = plot_bottom - plot_top
+
+        canvas.create_rectangle(plot_left, plot_top, plot_right, plot_bottom, outline="#c9ced6")
+        for step in range(1, 5):
+            y = plot_top + plot_height * step / 5
+            canvas.create_line(plot_left, y, plot_right, y, fill="#edf0f4")
+        for step in range(1, 6):
+            x = plot_left + plot_width * step / 6
+            canvas.create_line(x, plot_top, x, plot_bottom, fill="#f4f6f8")
+
+        if not self.graph_series:
+            canvas.create_text(
+                (plot_left + plot_right) / 2,
+                (plot_top + plot_bottom) / 2,
+                text="No variables selected",
+                fill="#6b7280",
+            )
+            return
+
+        all_times = [time for series in self.graph_series for time, _value in series.points]
+        x_min = min(all_times)
+        x_max = max(all_times)
+        if x_min == x_max:
+            x_max = x_min + 1.0
+
+        for step in range(0, 7):
+            fraction = step / 6
+            x = plot_left + plot_width * fraction
+            value = x_min + (x_max - x_min) * fraction
+            canvas.create_text(x, plot_bottom + 16, text=_format_tick(value), fill="#4b5563", font=("TkDefaultFont", 8))
+
+        canvas.create_text(20, plot_top + 6, text="100%", fill="#4b5563", anchor="w", font=("TkDefaultFont", 8))
+        canvas.create_text(20, plot_bottom - 6, text="0%", fill="#4b5563", anchor="w", font=("TkDefaultFont", 8))
+        canvas.create_text((plot_left + plot_right) / 2, height - 12, text="Time", fill="#374151", font=("TkDefaultFont", 8))
+
+        for index, series in enumerate(self.graph_series):
+            color = self.graph_palette[index % len(self.graph_palette)]
+            points = self._canvas_points(series, x_min, x_max, plot_left, plot_top, plot_width, plot_height)
+            if len(points) >= 4:
+                canvas.create_line(*points, fill=color, width=2)
+            legend_y = plot_top + 18 + index * 34
+            legend_x = plot_right + 18
+            canvas.create_line(legend_x, legend_y, legend_x + 24, legend_y, fill=color, width=3)
+            canvas.create_text(legend_x + 30, legend_y - 7, text=series.name, fill="#111827", anchor="nw")
+            canvas.create_text(
+                legend_x + 30,
+                legend_y + 9,
+                text=f"{_format_tick(series.minimum)} to {_format_tick(series.maximum)}",
+                fill="#6b7280",
+                anchor="nw",
+                font=("TkDefaultFont", 8),
+            )
+
+    def _canvas_points(
+        self,
+        series: PlotSeries,
+        x_min: float,
+        x_max: float,
+        plot_left: int,
+        plot_top: int,
+        plot_width: int,
+        plot_height: int,
+    ) -> list[float]:
+        points: list[float] = []
+        y_span = series.maximum - series.minimum
+        x_span = x_max - x_min
+        for time_value, value in series.points:
+            x = plot_left + ((time_value - x_min) / x_span) * plot_width
+            if y_span == 0:
+                y_fraction = 0.5
+            else:
+                y_fraction = (value - series.minimum) / y_span
+            y = plot_top + (1.0 - y_fraction) * plot_height
+            points.extend([x, y])
+        return points
+
 
 def _optional_float(value: str) -> float | None:
     cleaned = value.strip().lower()
     if cleaned in {"", "none", "off", "null"}:
         return None
     return float(cleaned)
+
+
+def _format_tick(value: float) -> str:
+    if abs(value) >= 1000:
+        return f"{value:.0f}"
+    if abs(value) >= 10:
+        return f"{value:.1f}".rstrip("0").rstrip(".")
+    return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
 def main() -> int:

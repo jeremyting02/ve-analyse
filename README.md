@@ -61,7 +61,12 @@ If Tkinter is available in your Python installation:
 python -m ve_analyse.gui
 ```
 
-The UI is intentionally thin. It calls the same analyser used by the CLI, so a web UI or richer desktop UI can be added later without duplicating the VE algorithm.
+The UI has two tabs:
+
+- `Analyse` writes a corrected VE table.
+- `Graph` lets you load a data log, select any numeric variables, and view them over time.
+
+The UI calls the same parser and analyser used by the CLI, so a web UI or richer desktop UI can be added later without duplicating the VE algorithm.
 
 ## Algorithm
 

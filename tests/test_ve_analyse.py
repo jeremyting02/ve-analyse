@@ -2,6 +2,7 @@ import unittest
 
 from ve_analyse.analyzer import AnalyzerConfig, analyze
 from ve_analyse.datalog import parse_datalog
+from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
 from ve_analyse.table import format_table, parse_table
 
 
@@ -100,6 +101,18 @@ class VeAnalyseTests(unittest.TestCase):
             format_table(ve),
             "MAP/RPM,1000,2000\n40,40,50\n60,60,70\n",
         )
+
+    def test_graph_helpers_find_numeric_columns_and_time_series(self):
+        log = parse_datalog(LOG_TEXT, source="inline")
+
+        self.assertEqual(detect_time_column(log), "Time")
+        self.assertIn("O2", numeric_columns(log))
+
+        series = build_plot_series(log, ["O2", "RPM"])
+
+        self.assertEqual([item.name for item in series], ["O2", "RPM"])
+        self.assertEqual(series[0].points[0], (0.0, 2.5))
+        self.assertEqual(series[1].maximum, 1000.0)
 
 
 if __name__ == "__main__":
