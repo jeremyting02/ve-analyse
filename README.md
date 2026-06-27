@@ -66,6 +66,8 @@ The UI has two tabs:
 - `Analyse` writes a corrected VE table.
 - `Graph` lets you load a data log, select any numeric variables, and view them over time.
 
+The UI automatically restores its previous session, including opened log/table/output paths, parameter fields, selected graph log, selected graph variables, active tab, and window size. On Windows this is saved under `%APPDATA%\VE Analyse\state.json`.
+
 The UI calls the same parser and analyser used by the CLI, so a web UI or richer desktop UI can be added later without duplicating the VE algorithm.
 
 ## Algorithm

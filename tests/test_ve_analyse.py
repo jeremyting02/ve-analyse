@@ -1,8 +1,11 @@
 import unittest
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from ve_analyse.analyzer import AnalyzerConfig, analyze
 from ve_analyse.datalog import parse_datalog
 from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
+from ve_analyse.state import UiState, load_ui_state, save_ui_state
 from ve_analyse.table import format_table, parse_table
 
 
@@ -113,6 +116,29 @@ class VeAnalyseTests(unittest.TestCase):
         self.assertEqual([item.name for item in series], ["O2", "RPM"])
         self.assertEqual(series[0].points[0], (0.0, 2.5))
         self.assertEqual(series[1].maximum, 1000.0)
+
+    def test_ui_state_round_trips_json(self):
+        with TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            state = UiState(
+                log_paths=["run.msl"],
+                ve_path="ve.csv",
+                afr_path="afr.csv",
+                output_path="new-ve.csv",
+                parameters={"min_clt": "70"},
+                graph_log="run.msl",
+                graph_variables=["RPM", "MAP"],
+                active_tab="Graph",
+                geometry="900x700+1+2",
+            )
+
+            save_ui_state(state, state_path)
+            loaded = load_ui_state(state_path)
+
+            self.assertEqual(loaded.log_paths, ["run.msl"])
+            self.assertEqual(loaded.parameters["min_clt"], "70")
+            self.assertEqual(loaded.graph_variables, ["RPM", "MAP"])
+            self.assertEqual(loaded.active_tab, "Graph")
 
 
 if __name__ == "__main__":

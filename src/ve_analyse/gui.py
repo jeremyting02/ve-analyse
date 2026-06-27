@@ -10,34 +10,48 @@ from tkinter import filedialog, messagebox, ttk
 from .analyzer import AnalyzerConfig, analyze
 from .datalog import DataLog, parse_datalog
 from .graph import PlotSeries, build_plot_series, numeric_columns
+from .state import UiState, load_ui_state, save_ui_state
 from .table import format_table, parse_table
 
 
 class VeAnalyseApp(tk.Tk):
-    def __init__(self) -> None:
+    def __init__(self, state_path: Path | None = None) -> None:
         super().__init__()
+        self.state_path = state_path
+        self.ui_state = load_ui_state(state_path)
+        self._restoring_state = True
         self.title("VE Analyse")
-        self.geometry("820x620")
+        self._set_initial_geometry(self.ui_state.geometry)
         self.minsize(720, 520)
-        self.log_paths: list[Path] = []
+        self.log_paths: list[Path] = [Path(path) for path in self.ui_state.log_paths]
         self.parsed_logs: dict[Path, DataLog] = {}
+        parameters = self.ui_state.parameters
 
-        self.ve_path = tk.StringVar()
-        self.afr_path = tk.StringVar()
-        self.output_path = tk.StringVar()
-        self.min_clt = tk.StringVar(value="60")
-        self.max_tpsacc = tk.StringVar(value="110")
-        self.min_samples = tk.StringVar(value="3")
-        self.authority = tk.StringVar(value="1.0")
-        self.max_cell_change = tk.StringVar(value="0.15")
-        self.afr_0v = tk.StringVar(value="10")
-        self.afr_5v = tk.StringVar(value="20")
-        self.graph_log = tk.StringVar()
+        self.ve_path = tk.StringVar(value=self.ui_state.ve_path)
+        self.afr_path = tk.StringVar(value=self.ui_state.afr_path)
+        self.output_path = tk.StringVar(value=self.ui_state.output_path)
+        self.min_clt = tk.StringVar(value=parameters.get("min_clt", "60"))
+        self.max_tpsacc = tk.StringVar(value=parameters.get("max_tpsacc", "110"))
+        self.min_samples = tk.StringVar(value=parameters.get("min_samples", "3"))
+        self.authority = tk.StringVar(value=parameters.get("authority", "1.0"))
+        self.max_cell_change = tk.StringVar(value=parameters.get("max_cell_change", "0.15"))
+        self.afr_0v = tk.StringVar(value=parameters.get("afr_0v", "10"))
+        self.afr_5v = tk.StringVar(value=parameters.get("afr_5v", "20"))
+        self.graph_log = tk.StringVar(value=self.ui_state.graph_log)
         self.graph_status = tk.StringVar(value="")
         self.graph_series: list[PlotSeries] = []
         self.graph_palette = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#17becf"]
 
         self._build()
+        self._restore_state_to_widgets()
+        self._restoring_state = False
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _set_initial_geometry(self, geometry: str) -> None:
+        try:
+            self.geometry(geometry or "820x620")
+        except tk.TclError:
+            self.geometry("820x620")
 
     def _build(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -53,6 +67,7 @@ class VeAnalyseApp(tk.Tk):
 
         self._build_analyse_tab(analyse_tab)
         self._build_graph_tab(graph_tab)
+        self.notebook.bind("<<NotebookTabChanged>>", lambda _event: self._save_state())
 
     def _build_analyse_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
@@ -110,6 +125,7 @@ class VeAnalyseApp(tk.Tk):
         ttk.Label(toolbar, text="Log").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.graph_log_combo = ttk.Combobox(toolbar, textvariable=self.graph_log, state="readonly")
         self.graph_log_combo.grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        self.graph_log_combo.bind("<<ComboboxSelected>>", lambda _event: self._on_graph_log_changed())
         ttk.Button(toolbar, text="Load variables", command=self._load_graph_variables).grid(row=0, column=2)
 
         sidebar = ttk.Frame(parent, padding=(12, 0, 6, 12))
@@ -145,6 +161,24 @@ class VeAnalyseApp(tk.Tk):
         self.graph_canvas.grid(row=0, column=0, sticky="nsew")
         self.graph_canvas.bind("<Configure>", lambda _event: self._draw_graph())
         ttk.Label(graph_area, textvariable=self.graph_status).grid(row=1, column=0, sticky="w", pady=(6, 0))
+
+    def _restore_state_to_widgets(self) -> None:
+        self.log_list.delete(0, tk.END)
+        for path in self.log_paths:
+            self.log_list.insert(tk.END, str(path))
+        self._refresh_graph_logs()
+        if self.ui_state.graph_log:
+            self.graph_log.set(self.ui_state.graph_log)
+        self._restore_active_tab()
+        if self.ui_state.graph_variables and self._selected_graph_path() is not None:
+            self._load_graph_variables(selected_variables=self.ui_state.graph_variables, silent=True)
+
+    def _restore_active_tab(self) -> None:
+        target = self.ui_state.active_tab
+        for tab_id in self.notebook.tabs():
+            if self.notebook.tab(tab_id, "text") == target:
+                self.notebook.select(tab_id)
+                return
 
     def _file_row(
         self,
@@ -187,6 +221,7 @@ class VeAnalyseApp(tk.Tk):
                 self.log_paths.append(path_obj)
                 self.log_list.insert(tk.END, str(path_obj))
         self._refresh_graph_logs()
+        self._save_state()
 
     def _clear_logs(self) -> None:
         self.log_paths.clear()
@@ -198,6 +233,7 @@ class VeAnalyseApp(tk.Tk):
         self.graph_series = []
         self.graph_status.set("")
         self._draw_graph()
+        self._save_state()
 
     def _choose_ve(self) -> None:
         self._choose_file(self.ve_path, "Choose VE table")
@@ -212,6 +248,7 @@ class VeAnalyseApp(tk.Tk):
         )
         if path:
             variable.set(path)
+            self._save_state()
 
     def _choose_output(self) -> None:
         path = filedialog.asksaveasfilename(
@@ -221,6 +258,7 @@ class VeAnalyseApp(tk.Tk):
         )
         if path:
             self.output_path.set(path)
+            self._save_state()
 
     def _run(self) -> None:
         if not self.log_paths:
@@ -261,11 +299,13 @@ class VeAnalyseApp(tk.Tk):
     def _finish(self, summary: str) -> None:
         self._set_summary(summary)
         self.run_button.configure(state=tk.NORMAL)
+        self._save_state()
 
     def _fail(self, exc: Exception) -> None:
         self.run_button.configure(state=tk.NORMAL)
         messagebox.showerror("VE Analyse", str(exc))
         self._set_summary(f"Failed:\n{exc}\n")
+        self._save_state()
 
     def _set_summary(self, text: str) -> None:
         self.summary.configure(state=tk.NORMAL)
@@ -281,6 +321,13 @@ class VeAnalyseApp(tk.Tk):
             return
         if self.graph_log.get() not in values:
             self.graph_log.set(values[0])
+
+    def _on_graph_log_changed(self) -> None:
+        self.graph_variable_list.delete(0, tk.END)
+        self.graph_series = []
+        self.graph_status.set("")
+        self._draw_graph()
+        self._save_state()
 
     def _selected_graph_path(self) -> Path | None:
         selected = self.graph_log.get()
@@ -298,11 +345,19 @@ class VeAnalyseApp(tk.Tk):
             self.parsed_logs[path] = parse_datalog(path)
         return self.parsed_logs[path]
 
-    def _load_graph_variables(self) -> None:
+    def _load_graph_variables(
+        self,
+        selected_variables: list[str] | None = None,
+        *,
+        silent: bool = False,
+    ) -> None:
         try:
             log = self._get_graph_log()
         except Exception as exc:
-            messagebox.showerror("VE Analyse", str(exc))
+            if not silent:
+                messagebox.showerror("VE Analyse", str(exc))
+            else:
+                self.graph_status.set(str(exc))
             return
 
         columns = numeric_columns(log)
@@ -313,10 +368,13 @@ class VeAnalyseApp(tk.Tk):
         preferred = {"rpm", "map", "o2", "afr", "pw", "sparkangle"}
         for index, column in enumerate(columns):
             normalized = "".join(character.lower() for character in column if character.isalnum())
-            if normalized in preferred:
+            if selected_variables and column in selected_variables:
+                self.graph_variable_list.selection_set(index)
+            elif not selected_variables and normalized in preferred:
                 self.graph_variable_list.selection_set(index)
 
         self._plot_selected_variables()
+        self._save_state()
 
     def _plot_selected_variables(self) -> None:
         if self.graph_variable_list.size() == 0 and self.log_paths:
@@ -331,6 +389,7 @@ class VeAnalyseApp(tk.Tk):
             self.graph_series = []
             self.graph_status.set("")
             self._draw_graph()
+            self._save_state()
             return
 
         try:
@@ -339,6 +398,7 @@ class VeAnalyseApp(tk.Tk):
             point_count = sum(len(series.points) for series in self.graph_series)
             self.graph_status.set(f"{len(self.graph_series)} variables, {point_count} plotted points")
             self._draw_graph()
+            self._save_state()
         except Exception as exc:
             messagebox.showerror("VE Analyse", str(exc))
 
@@ -347,6 +407,50 @@ class VeAnalyseApp(tk.Tk):
         self.graph_series = []
         self.graph_status.set("")
         self._draw_graph()
+        self._save_state()
+
+    def _current_tab_name(self) -> str:
+        selected = self.notebook.select()
+        return self.notebook.tab(selected, "text") if selected else "Analyse"
+
+    def _selected_graph_variables(self) -> list[str]:
+        return [
+            self.graph_variable_list.get(index)
+            for index in self.graph_variable_list.curselection()
+        ]
+
+    def _build_ui_state(self) -> UiState:
+        return UiState(
+            log_paths=[str(path) for path in self.log_paths],
+            ve_path=self.ve_path.get(),
+            afr_path=self.afr_path.get(),
+            output_path=self.output_path.get(),
+            parameters={
+                "min_clt": self.min_clt.get(),
+                "max_tpsacc": self.max_tpsacc.get(),
+                "min_samples": self.min_samples.get(),
+                "authority": self.authority.get(),
+                "max_cell_change": self.max_cell_change.get(),
+                "afr_0v": self.afr_0v.get(),
+                "afr_5v": self.afr_5v.get(),
+            },
+            graph_log=self.graph_log.get(),
+            graph_variables=self._selected_graph_variables(),
+            active_tab=self._current_tab_name(),
+            geometry=self.geometry(),
+        )
+
+    def _save_state(self) -> None:
+        if self._restoring_state:
+            return
+        try:
+            save_ui_state(self._build_ui_state(), self.state_path)
+        except OSError:
+            pass
+
+    def _on_close(self) -> None:
+        self._save_state()
+        self.destroy()
 
     def _draw_graph(self) -> None:
         canvas = getattr(self, "graph_canvas", None)
