@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -395,7 +397,16 @@ def _pick_path_with_tk(
         import tkinter as tk
         from tkinter import filedialog
     except ImportError as exc:
-        raise RuntimeError("File picker is not available in this Python installation.") from exc
+        try:
+            return _pick_path_with_powershell(
+                mode=mode,
+                title=title,
+                filetypes=filetypes,
+                initial_path=initial_path,
+                default_extension=default_extension,
+            )
+        except OSError as fallback_exc:
+            raise RuntimeError("File picker is not available in this Python installation.") from fallback_exc
 
     root = tk.Tk()
     root.withdraw()
@@ -423,6 +434,72 @@ def _pick_path_with_tk(
     finally:
         root.destroy()
     return str(selected or "")
+
+
+def _pick_path_with_powershell(
+    *,
+    mode: str,
+    title: str,
+    filetypes: list[tuple[str, str]],
+    initial_path: str,
+    default_extension: str,
+) -> str:
+    config = {
+        "mode": mode,
+        "title": title,
+        "initial_dir": _initial_directory(initial_path),
+        "initial_file": _initial_file(initial_path) or ("ve-new.csv" if mode == "save" else ""),
+        "filter": _windows_forms_filter(filetypes),
+        "default_extension": default_extension.lstrip("."),
+    }
+    raw_config = json.dumps(config)
+    script = f"""
+$config = ConvertFrom-Json @'
+{raw_config}
+'@
+Add-Type -AssemblyName System.Windows.Forms
+if ($config.mode -eq 'save') {{
+    $dialog = New-Object System.Windows.Forms.SaveFileDialog
+    $dialog.OverwritePrompt = $true
+    $dialog.DefaultExt = $config.default_extension
+}} else {{
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.CheckFileExists = $true
+}}
+$dialog.Title = $config.title
+$dialog.Filter = $config.filter
+if ($config.initial_dir) {{ $dialog.InitialDirectory = $config.initial_dir }}
+if ($config.initial_file) {{ $dialog.FileName = $config.initial_file }}
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    Write-Output $dialog.FileName
+}}
+"""
+    completed = subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-STA",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise OSError(completed.stderr.strip() or "PowerShell file picker failed.")
+    return completed.stdout.strip()
+
+
+def _windows_forms_filter(filetypes: list[tuple[str, str]]) -> str:
+    parts: list[str] = []
+    for label, patterns in filetypes:
+        normalized_patterns = ";".join(patterns.split())
+        parts.extend([f"{label} ({normalized_patterns})", normalized_patterns])
+    return "|".join(parts) if parts else "All files (*.*)|*.*"
 
 
 def _initial_directory(path: str) -> str:

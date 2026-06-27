@@ -44,7 +44,23 @@ Close the VE Analyse console window to stop the local web UI.
         if (Test-Path $ZipPath) {
             Remove-Item -LiteralPath $ZipPath -Force
         }
-        Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $ZipPath
+        $Compressed = $false
+        for ($Attempt = 1; $Attempt -le 5; $Attempt++) {
+            try {
+                Compress-Archive -Path $PortableDir -DestinationPath $ZipPath -Force
+                $Compressed = $true
+                break
+            }
+            catch {
+                if ($Attempt -eq 5) {
+                    throw
+                }
+                Start-Sleep -Seconds 2
+            }
+        }
+        if (-not $Compressed) {
+            throw "Portable zip could not be created."
+        }
         Write-Host "Portable zip created: $ZipPath"
     }
 

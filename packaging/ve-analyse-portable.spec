@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-project_root = Path(SPECPATH).parent.parent
+project_root = Path(SPECPATH).parent
 src_root = project_root / "src"
 web_static = src_root / "ve_analyse" / "web_static"
 
@@ -13,10 +13,7 @@ a = Analysis(
     pathex=[str(src_root)],
     binaries=[],
     datas=[(str(web_static), "ve_analyse/web_static")],
-    hiddenimports=[
-        "tkinter",
-        "tkinter.filedialog",
-    ],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

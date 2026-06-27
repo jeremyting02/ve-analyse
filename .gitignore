@@ -3,9 +3,11 @@ __pycache__/
 .pytest_cache/
 .venv/
 .codex/
-dist/
+dist/**
 build/
 *.egg-info/
 examples/ve-new.tsv
 examples/ve-new.csv
 .ve-analyse-web-state.json
+
+!dist/*.zip
