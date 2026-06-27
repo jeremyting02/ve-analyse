@@ -62,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log", action="append", required=True, help="Data log path. Repeat for multiple logs.")
     parser.add_argument("--ve-table", required=True, help="Current VE table path.")
     parser.add_argument("--afr-table", required=True, help="AFR target table path.")
-    parser.add_argument("--output", required=True, help="Output VE table path.")
+    parser.add_argument("--output", required=True, help="Output VE table CSV path.")
 
     columns = parser.add_argument_group("columns")
     columns.add_argument("--rpm-col", default=None, help="RPM column name. Defaults to RPM, then RPM/100.")
@@ -109,4 +109,3 @@ def _optional_float(value: str) -> float | None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

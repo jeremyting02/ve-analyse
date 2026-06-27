@@ -141,8 +141,8 @@ class VeAnalyseApp(tk.Tk):
     def _choose_output(self) -> None:
         path = filedialog.asksaveasfilename(
             title="Choose output VE table",
-            defaultextension=".tsv",
-            filetypes=[("TSV", "*.tsv"), ("Text", "*.txt"), ("All files", "*.*")],
+            defaultextension=".csv",
+            filetypes=[("CSV", "*.csv"), ("Text", "*.txt"), ("All files", "*.*")],
         )
         if path:
             self.output_path.set(path)

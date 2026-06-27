@@ -23,7 +23,7 @@ Data logs use the common MegaSquirt `.msl`/MegaLogViewer text format. The defaul
 ## Command line
 
 ```powershell
-python -m ve_analyse --log path\to\run.msl --ve-table ve.tsv --afr-table afr.tsv --output ve-new.tsv
+python -m ve_analyse --log path\to\run.msl --ve-table ve.tsv --afr-table afr.tsv --output ve-new.csv
 ```
 
 Common tunables:
@@ -33,7 +33,7 @@ python -m ve_analyse `
   --log run1.msl --log run2.msl `
   --ve-table ve.tsv `
   --afr-table afr.tsv `
-  --output ve-new.tsv `
+  --output ve-new.csv `
   --min-clt 70 `
   --max-tpsacc 105 `
   --min-samples 3 `
@@ -50,7 +50,7 @@ python -m ve_analyse --help
 Try the bundled mini example:
 
 ```powershell
-python -m ve_analyse --log examples\example.msl --ve-table examples\ve.tsv --afr-table examples\afr.tsv --output examples\ve-new.tsv --min-samples 1
+python -m ve_analyse --log examples\example.msl --ve-table examples\ve.tsv --afr-table examples\afr.tsv --output examples\ve-new.csv --min-samples 1
 ```
 
 ## Simple UI

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import math
 import re
 from dataclasses import dataclass
@@ -129,15 +130,17 @@ def parse_table(path_or_text: str | Path, *, source: str | None = None) -> GridT
     )
 
 
-def format_table(table: GridTable, *, decimals: int = 2) -> str:
-    """Format a grid table as tab-delimited text."""
+def format_table(table: GridTable, *, decimals: int = 2, delimiter: str = ",") -> str:
+    """Format a grid table as delimited text, CSV by default."""
 
     label = f"{table.y_label}/{table.x_label}"
-    lines = ["\t".join([label, *(_format_axis(value) for value in table.x_bins)])]
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, delimiter=delimiter, lineterminator="\n")
+    writer.writerow([label, *(_format_axis(value) for value in table.x_bins)])
     for y_value, row in zip(table.y_bins, table.values):
         formatted_values = [_format_value(value, decimals=decimals) for value in row]
-        lines.append("\t".join([_format_axis(y_value), *formatted_values]))
-    return "\n".join(lines) + "\n"
+        writer.writerow([_format_axis(y_value), *formatted_values])
+    return output.getvalue()
 
 
 def cell_weights(
@@ -323,4 +326,3 @@ def _format_axis(value: float) -> str:
 def _format_value(value: float, *, decimals: int) -> str:
     text = f"{value:.{decimals}f}"
     return text.rstrip("0").rstrip(".") if "." in text else text
-

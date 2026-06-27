@@ -2,7 +2,7 @@ import unittest
 
 from ve_analyse.analyzer import AnalyzerConfig, analyze
 from ve_analyse.datalog import parse_datalog
-from ve_analyse.table import parse_table
+from ve_analyse.table import format_table, parse_table
 
 
 LOG_TEXT = """"MS/Extra format hr_11d  ********: MS/Extra hr_11d  ***************"
@@ -92,6 +92,14 @@ class VeAnalyseTests(unittest.TestCase):
 
         self.assertEqual(result.accepted_rows, 2)
         self.assertEqual(result.skip_reasons["zero_weight"], 1)
+
+    def test_format_table_outputs_comma_delimited_csv(self):
+        ve = parse_table(VE_TABLE, source="ve")
+
+        self.assertEqual(
+            format_table(ve),
+            "MAP/RPM,1000,2000\n40,40,50\n60,60,70\n",
+        )
 
 
 if __name__ == "__main__":

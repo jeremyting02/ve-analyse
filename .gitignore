@@ -6,4 +6,4 @@ dist/
 build/
 *.egg-info/
 examples/ve-new.tsv
-
+examples/ve-new.csv
