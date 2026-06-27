@@ -28,6 +28,10 @@ class VeAnalyseServer(ThreadingHTTPServer):
         self.app = app
 
 
+def create_server(host: str, port: int, state_path: Path | None) -> VeAnalyseServer:
+    return VeAnalyseServer((host, port), WebApplication(state_path=state_path))
+
+
 class VeAnalyseHandler(BaseHTTPRequestHandler):
     server: VeAnalyseServer
 
@@ -139,8 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     state_path = Path(args.state_path) if args.state_path else Path.cwd() / ".ve-analyse-web-state.json"
-    app = WebApplication(state_path=state_path)
-    server = VeAnalyseServer((args.host, args.port), app)
+    server = create_server(args.host, args.port, state_path)
     url = f"http://{args.host}:{server.server_port}/"
     print(f"VE Analyse web UI running at {url}", flush=True)
     try:

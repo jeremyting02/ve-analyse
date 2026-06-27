@@ -95,6 +95,36 @@ The Tkinter UI also restores its previous session. On Windows, the Tkinter state
 
 Both UIs call the same parser and analyser used by the CLI, so interface work stays separate from the VE algorithm.
 
+## Portable Windows build
+
+The app can be packaged as a portable Windows folder, with no installation required on the target machine. Build it on Windows with PyInstaller available:
+
+```powershell
+python -m pip install pyinstaller
+.\scripts\build-portable-windows.ps1
+```
+
+The build creates:
+
+```text
+dist\VE-Analyse-Portable\
+dist\VE-Analyse-Portable.zip
+```
+
+Users unzip the portable package and run:
+
+```text
+VE Analyse.exe
+```
+
+The launcher starts the local web UI, opens the default browser, and stores session state beside the executable in:
+
+```text
+data\state.json
+```
+
+Close the console window to stop the local web UI.
+
 ## Algorithm
 
 For each accepted log row:

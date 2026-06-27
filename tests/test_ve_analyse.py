@@ -6,6 +6,7 @@ from unittest.mock import patch
 from ve_analyse.analyzer import AnalyzerConfig, analyze
 from ve_analyse.datalog import parse_datalog
 from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
+from ve_analyse.launcher import available_port, default_state_path
 from ve_analyse.state import UiState, load_ui_state, save_ui_state
 from ve_analyse.table import format_table, parse_table
 from ve_analyse.webapi import analyse_payload, graph_payload, pick_path_payload, state_payload, table_payload
@@ -192,6 +193,22 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(payload["parameters"]["distribution"], "bilinear")
             self.assertEqual(payload["parameters"]["min_sample_authority"], "0.35")
             self.assertEqual(payload["parameters"]["full_authority_samples"], "30")
+
+    def test_portable_launcher_uses_local_data_state(self):
+        with TemporaryDirectory() as temp_dir:
+            state_path = default_state_path(Path(temp_dir))
+
+            self.assertEqual(state_path, Path(temp_dir) / "data" / "state.json")
+
+    def test_portable_launcher_falls_back_when_preferred_port_is_busy(self):
+        import socket
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            busy_port = listener.getsockname()[1]
+
+            self.assertEqual(available_port("127.0.0.1", busy_port), 0)
 
     def test_web_graph_payload_builds_stacked_series_data(self):
         with TemporaryDirectory() as temp_dir:
