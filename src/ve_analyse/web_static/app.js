@@ -694,7 +694,7 @@ async function runAnalyse() {
     $("resultSummary").textContent = resultSummaryText(result);
     renderDownload(result);
     renderVeTables(result.tables);
-    renderUpdates(result.updates || []);
+    renderResultTables(result.result_tables);
     activateView("Results");
     if (result.output_saved) {
       setStatus("Analysis complete.", "status-ok");
@@ -764,6 +764,35 @@ function renderVeTables(tables) {
   );
 }
 
+function renderResultTables(resultTables) {
+  const container = $("resultTables");
+  container.innerHTML = "";
+  if (!resultTables?.delta || !resultTables?.samples) {
+    return;
+  }
+
+  const deltaValues = flattenTableValues(resultTables.delta);
+  const sampleValues = flattenTableValues(resultTables.samples);
+  const maxAbsDelta = deltaValues.length ? Math.max(...deltaValues.map((value) => Math.abs(value))) : 0;
+  const sampleMin = sampleValues.length ? Math.min(...sampleValues) : 0;
+  const sampleMax = sampleValues.length ? Math.max(...sampleValues) : 0;
+
+  container.append(
+    buildResultTableCard(
+      "Delta %",
+      resultTables.delta,
+      (value) => formatSignedPercent(value),
+      (value) => deltaCellColor(value, maxAbsDelta),
+    ),
+    buildResultTableCard(
+      "Samples",
+      resultTables.samples,
+      (value) => formatAxis(value),
+      (value) => sampleCellColor(value, sampleMin, sampleMax),
+    ),
+  );
+}
+
 function buildVeTableCard(title, table, min, max) {
   const card = document.createElement("section");
   card.className = "ve-table-card";
@@ -810,11 +839,67 @@ function buildVeTableCard(title, table, min, max) {
   return card;
 }
 
+function buildResultTableCard(title, table, valueFormatter, colorFormatter) {
+  const card = document.createElement("section");
+  card.className = "ve-table-card";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const wrap = document.createElement("div");
+  wrap.className = "ve-grid-wrap";
+  const grid = document.createElement("table");
+  grid.className = "ve-grid";
+
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  const corner = document.createElement("th");
+  corner.className = "axis-corner";
+  corner.textContent = `${table.y_label || "MAP"}/${table.x_label || "RPM"}`;
+  headerRow.append(corner);
+  table.x_bins.forEach((rpm) => {
+    const th = document.createElement("th");
+    th.textContent = formatAxis(rpm);
+    headerRow.append(th);
+  });
+  thead.append(headerRow);
+
+  const tbody = document.createElement("tbody");
+  table.y_bins.forEach((mapValue, rowIndex) => {
+    const row = document.createElement("tr");
+    const axis = document.createElement("th");
+    axis.className = "y-axis";
+    axis.textContent = formatAxis(mapValue);
+    row.append(axis);
+    table.values[rowIndex].forEach((value) => {
+      const cell = document.createElement("td");
+      if (isNumericCell(value)) {
+        cell.className = "ve-cell";
+        cell.textContent = valueFormatter(value);
+        cell.style.backgroundColor = colorFormatter(value);
+      } else {
+        cell.className = "ve-cell empty";
+        cell.textContent = "";
+      }
+      row.append(cell);
+    });
+    tbody.append(row);
+  });
+
+  grid.append(thead, tbody);
+  wrap.append(grid);
+  card.append(heading, wrap);
+  return card;
+}
+
 function flattenTableValues(table) {
   return (table.values || [])
     .flat()
+    .filter((value) => isNumericCell(value))
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value));
+}
+
+function isNumericCell(value) {
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
 }
 
 function veCellColor(value, min, max) {
@@ -828,6 +913,34 @@ function veCellColor(value, min, max) {
   return `hsl(${hue}, 64%, ${lightness}%)`;
 }
 
+function deltaCellColor(value, maxAbs) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "#f8fafc";
+  }
+  if (!Number.isFinite(maxAbs) || maxAbs <= 0 || Math.abs(number) < 0.000001) {
+    return "#eef2f6";
+  }
+  const ratio = Math.max(0, Math.min(1, Math.abs(number) / maxAbs));
+  const hue = number > 0 ? 4 : 138;
+  const lightness = 91 - ratio * 18;
+  return `hsl(${hue}, 68%, ${lightness}%)`;
+}
+
+function sampleCellColor(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "#f8fafc";
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    return "hsl(145, 48%, 80%)";
+  }
+  const ratio = Math.max(0, Math.min(1, (number - min) / (max - min)));
+  const hue = 8 + ratio * 132;
+  const lightness = 87 - ratio * 14;
+  return `hsl(${hue}, 62%, ${lightness}%)`;
+}
+
 function formatAxis(value) {
   const number = Number(value);
   if (Number.isFinite(number) && Number.isInteger(number)) {
@@ -836,21 +949,13 @@ function formatAxis(value) {
   return formatNumber(value);
 }
 
-function renderUpdates(updates) {
-  const body = $("updatesBody");
-  body.innerHTML = "";
-  updates.forEach((update) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${formatNumber(update.rpm)}</td>
-      <td>${formatNumber(update.load)}</td>
-      <td>${formatNumber(update.old_ve)}</td>
-      <td>${formatNumber(update.new_ve)}</td>
-      <td>${formatNumber(update.delta_percent)}%</td>
-      <td>${update.samples}</td>
-    `;
-    body.append(row);
-  });
+function formatSignedPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "";
+  }
+  const prefix = number > 0 ? "+" : "";
+  return `${prefix}${formatNumber(number)}%`;
 }
 
 function collectFormState() {

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .analyzer import AnalyzerConfig, analyze
+from .analyzer import AnalyzerConfig, CellUpdate, analyze
 from .datalog import parse_datalog
 from .graph import build_plot_series, detect_time_column, numeric_columns
 from .state import UiState, load_ui_state, save_ui_state
@@ -154,6 +154,7 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "old": table_payload(ve_table),
             "new": table_payload(result.table),
         },
+        "result_tables": result_tables_payload(result.table, result.updates),
         "output_path": str(output_path) if output_path is not None else "",
         "output_saved": output_saved,
         "output_save_attempted": output_save_attempted,
@@ -166,8 +167,7 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def table_payload(table: GridTable) -> dict[str, Any]:
     """Return a display table with RPM ascending and MAP/load descending."""
 
-    x_order = sorted(range(len(table.x_bins)), key=lambda index: table.x_bins[index])
-    y_order = sorted(range(len(table.y_bins)), key=lambda index: table.y_bins[index], reverse=True)
+    x_order, y_order = _display_axis_orders(table)
     return {
         "x_label": table.x_label,
         "y_label": table.y_label,
@@ -178,6 +178,60 @@ def table_payload(table: GridTable) -> dict[str, Any]:
             for row_index in y_order
         ],
     }
+
+
+def result_tables_payload(table: GridTable, updates: list[CellUpdate]) -> dict[str, Any]:
+    """Return sparse display grids for updated-cell delta and sample counts."""
+
+    x_order, y_order = _display_axis_orders(table)
+    x_position = {source_index: display_index for display_index, source_index in enumerate(x_order)}
+    y_position = {source_index: display_index for display_index, source_index in enumerate(y_order)}
+    delta_values: list[list[float | None]] = [
+        [None for _ in x_order]
+        for _ in y_order
+    ]
+    sample_values: list[list[int | None]] = [
+        [None for _ in x_order]
+        for _ in y_order
+    ]
+
+    for update in updates:
+        row_index = y_position.get(update.row)
+        col_index = x_position.get(update.col)
+        if row_index is None or col_index is None:
+            continue
+        delta_values[row_index][col_index] = (
+            (update.new_ve / update.old_ve - 1.0) * 100.0
+            if update.old_ve
+            else 0.0
+        )
+        sample_values[row_index][col_index] = update.samples
+
+    return {
+        "delta": _grid_payload(table, x_order, y_order, delta_values),
+        "samples": _grid_payload(table, x_order, y_order, sample_values),
+    }
+
+
+def _grid_payload(
+    table: GridTable,
+    x_order: list[int],
+    y_order: list[int],
+    values: list[list[float | int | None]],
+) -> dict[str, Any]:
+    return {
+        "x_label": table.x_label,
+        "y_label": table.y_label,
+        "x_bins": [table.x_bins[index] for index in x_order],
+        "y_bins": [table.y_bins[index] for index in y_order],
+        "values": values,
+    }
+
+
+def _display_axis_orders(table: GridTable) -> tuple[list[int], list[int]]:
+    x_order = sorted(range(len(table.x_bins)), key=lambda index: table.x_bins[index])
+    y_order = sorted(range(len(table.y_bins)), key=lambda index: table.y_bins[index], reverse=True)
+    return x_order, y_order
 
 
 def config_from_parameters(parameters: dict[str, str]) -> AnalyzerConfig:

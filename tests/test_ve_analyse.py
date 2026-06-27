@@ -195,6 +195,11 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(payload["tables"]["old"]["x_bins"], [1000.0, 2000.0])
             self.assertEqual(payload["tables"]["old"]["y_bins"], [60.0, 40.0])
             self.assertEqual(payload["tables"]["old"]["values"][0], [60.0, 70.0])
+            self.assertEqual(payload["result_tables"]["delta"]["x_bins"], [1000.0, 2000.0])
+            self.assertEqual(payload["result_tables"]["delta"]["y_bins"], [60.0, 40.0])
+            self.assertIsNone(payload["result_tables"]["delta"]["values"][0][0])
+            self.assertAlmostEqual(payload["result_tables"]["delta"]["values"][1][0], 2.05, places=2)
+            self.assertEqual(payload["result_tables"]["samples"]["values"][1][0], 3)
 
     def test_web_analyse_payload_returns_download_csv_when_output_write_fails(self):
         with TemporaryDirectory() as temp_dir:
