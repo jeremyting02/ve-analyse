@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VE Analyse</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <h1>VE Analyse</h1>
+            <p>MegaSquirt log review and VE correction</p>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Session</h2>
+            <button id="useExample" type="button">Use example</button>
+          </div>
+          <label class="field">
+            <span>Data log path</span>
+            <div class="path-row">
+              <input id="logPathInput" type="text" placeholder="C:\path\run.msl">
+              <button id="addLog" type="button">Add</button>
+            </div>
+          </label>
+          <div id="logList" class="file-list"></div>
+
+          <label class="field">
+            <span>VE table</span>
+            <input id="vePath" type="text" placeholder="C:\path\ve.csv">
+          </label>
+          <label class="field">
+            <span>AFR target table</span>
+            <input id="afrPath" type="text" placeholder="C:\path\afr.csv">
+          </label>
+          <label class="field">
+            <span>Output CSV</span>
+            <input id="outputPath" type="text" placeholder="C:\path\ve-new.csv">
+          </label>
+        </section>
+
+        <section class="panel compact">
+          <h2>Status</h2>
+          <div id="status" class="status-line">Loading session...</div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <nav class="tabs" aria-label="Views">
+          <button class="tab-button active" type="button" data-view="graphsView">Graphs</button>
+          <button class="tab-button" type="button" data-view="analyseView">Analyse</button>
+          <button class="tab-button" type="button" data-view="resultsView">Results</button>
+        </nav>
+
+        <section id="graphsView" class="view active">
+          <div class="view-header">
+            <div>
+              <h2>Stacked Graphs</h2>
+              <p>Each selected variable gets its own track on a shared time axis.</p>
+            </div>
+            <div class="toolbar">
+              <label>
+                <span>Log</span>
+                <select id="graphLogSelect"></select>
+              </label>
+              <label>
+                <span>Max points</span>
+                <input id="maxGraphPoints" type="number" min="200" step="100" value="2500">
+              </label>
+            </div>
+          </div>
+
+          <div class="graph-layout">
+            <section class="variable-panel">
+              <div class="panel-heading">
+                <h3>Variables</h3>
+                <button id="loadVariables" type="button">Load</button>
+              </div>
+              <input id="variableFilter" type="search" placeholder="Filter variables">
+              <div id="variableList" class="variable-list"></div>
+            </section>
+
+            <section class="graph-panel">
+              <div id="graphSummary" class="graph-summary">Add a log, then load variables.</div>
+              <div id="graphTracks" class="graph-tracks"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="analyseView" class="view">
+          <div class="view-header">
+            <div>
+              <h2>VE Analyse</h2>
+              <p>Calculate a new VE table from the selected logs and AFR target table.</p>
+            </div>
+            <button id="runAnalyse" type="button" class="primary">Run analyse</button>
+          </div>
+
+          <div class="parameter-grid">
+            <section class="panel">
+              <h3>Wideband</h3>
+              <label class="field inline"><span>AFR at 0 V</span><input data-param="afr_0v" type="number" step="0.1"></label>
+              <label class="field inline"><span>AFR at 5 V</span><input data-param="afr_5v" type="number" step="0.1"></label>
+            </section>
+
+            <section class="panel">
+              <h3>Filters</h3>
+              <label class="field inline"><span>Min RPM</span><input data-param="min_rpm" type="number" step="50"></label>
+              <label class="field inline"><span>Min CLT</span><input data-param="min_clt" type="text"></label>
+              <label class="field inline"><span>Max CLT</span><input data-param="max_clt" type="text"></label>
+              <label class="field inline"><span>Min PW</span><input data-param="min_pw" type="text"></label>
+              <label class="field inline"><span>Max TPSacc</span><input data-param="max_tpsacc" type="text"></label>
+            </section>
+
+            <section class="panel">
+              <h3>Correction</h3>
+              <label class="field inline"><span>Authority</span><input data-param="authority" type="number" step="0.05"></label>
+              <label class="field inline"><span>Max sample</span><input data-param="max_sample_correction" type="number" step="0.01"></label>
+              <label class="field inline"><span>Max cell</span><input data-param="max_cell_change" type="number" step="0.01"></label>
+              <label class="field inline"><span>Min samples</span><input data-param="min_samples" type="number" step="1"></label>
+              <label class="field inline"><span>Min weight</span><input data-param="min_cell_weight" type="number" step="0.1"></label>
+            </section>
+
+            <section class="panel">
+              <h3>Distribution</h3>
+              <label class="field inline">
+                <span>Mode</span>
+                <select data-param="distribution">
+                  <option value="bilinear">Bilinear</option>
+                  <option value="nearest">Nearest cell</option>
+                </select>
+              </label>
+              <label class="field inline">
+                <span>Bounds</span>
+                <select data-param="out_of_bounds">
+                  <option value="skip">Skip outside</option>
+                  <option value="clamp">Clamp outside</option>
+                </select>
+              </label>
+              <label class="field inline"><span>Smoothing passes</span><input data-param="smoothing_passes" type="number" step="1"></label>
+              <label class="field inline"><span>Smoothing factor</span><input data-param="smoothing_factor" type="number" step="0.05"></label>
+              <label class="field inline"><span>Output decimals</span><input data-param="output_decimals" type="number" step="1"></label>
+            </section>
+          </div>
+        </section>
+
+        <section id="resultsView" class="view">
+          <div class="view-header">
+            <div>
+              <h2>Results</h2>
+              <p>Summary and changed cells from the last analysis run.</p>
+            </div>
+          </div>
+          <pre id="resultSummary" class="summary-box">No analysis run yet.</pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>RPM</th>
+                  <th>Load</th>
+                  <th>Old VE</th>
+                  <th>New VE</th>
+                  <th>Delta</th>
+                  <th>Samples</th>
+                </tr>
+              </thead>
+              <tbody id="updatesBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

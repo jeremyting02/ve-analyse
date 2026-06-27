@@ -17,7 +17,10 @@ dependencies = []
 [project.scripts]
 ve-analyse = "ve_analyse.cli:main"
 ve-analyse-ui = "ve_analyse.gui:main"
+ve-analyse-web = "ve_analyse.webui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+ve_analyse = ["web_static/*"]

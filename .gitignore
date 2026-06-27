@@ -2,8 +2,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.codex/
 dist/
 build/
 *.egg-info/
 examples/ve-new.tsv
 examples/ve-new.csv
+.ve-analyse-web-state.json

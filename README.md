@@ -55,20 +55,40 @@ python -m ve_analyse --log examples\example.msl --ve-table examples\ve.tsv --afr
 
 ## Simple UI
 
+For the local web UI:
+
+```powershell
+python -m ve_analyse.webui
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765/
+```
+
+The web UI has:
+
+- a session sidebar for log/table/output paths,
+- stacked graph tracks where each selected log variable gets its own graph on a shared time axis,
+- grouped analysis tunables,
+- a results view showing the summary and changed VE cells,
+- automatic session restore using `.ve-analyse-web-state.json` in the directory where the server was launched.
+
 If Tkinter is available in your Python installation:
 
 ```powershell
 python -m ve_analyse.gui
 ```
 
-The UI has two tabs:
+The older Tkinter UI has two tabs:
 
 - `Analyse` writes a corrected VE table.
 - `Graph` lets you load a data log, select any numeric variables, and view them over time.
 
-The UI automatically restores its previous session, including opened log/table/output paths, parameter fields, selected graph log, selected graph variables, active tab, and window size. On Windows this is saved under `%APPDATA%\VE Analyse\state.json`.
+The Tkinter UI also restores its previous session. On Windows, the Tkinter state is saved under `%APPDATA%\VE Analyse\state.json`.
 
-The UI calls the same parser and analyser used by the CLI, so a web UI or richer desktop UI can be added later without duplicating the VE algorithm.
+Both UIs call the same parser and analyser used by the CLI, so interface work stays separate from the VE algorithm.
 
 ## Algorithm
 

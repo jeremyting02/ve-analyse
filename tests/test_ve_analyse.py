@@ -7,6 +7,7 @@ from ve_analyse.datalog import parse_datalog
 from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
 from ve_analyse.state import UiState, load_ui_state, save_ui_state
 from ve_analyse.table import format_table, parse_table
+from ve_analyse.webapi import analyse_payload, graph_payload, state_payload
 
 
 LOG_TEXT = """"MS/Extra format hr_11d  ********: MS/Extra hr_11d  ***************"
@@ -139,6 +140,49 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(loaded.parameters["min_clt"], "70")
             self.assertEqual(loaded.graph_variables, ["RPM", "MAP"])
             self.assertEqual(loaded.active_tab, "Graph")
+
+    def test_web_state_payload_adds_default_parameters(self):
+        with TemporaryDirectory() as temp_dir:
+            payload = state_payload(Path(temp_dir) / "missing-state.json")
+
+            self.assertEqual(payload["parameters"]["min_clt"], "60")
+            self.assertEqual(payload["parameters"]["distribution"], "bilinear")
+
+    def test_web_graph_payload_builds_stacked_series_data(self):
+        with TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "run.msl"
+            log_path.write_text(LOG_TEXT, encoding="utf-8")
+
+            payload = graph_payload(str(log_path), ["O2", "RPM"], max_points_per_series=10)
+
+            self.assertEqual(payload["row_count"], 3)
+            self.assertEqual([item["name"] for item in payload["series"]], ["O2", "RPM"])
+            self.assertEqual(payload["series"][0]["points"][0], (0.0, 2.5))
+
+    def test_web_analyse_payload_writes_csv_output(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log_path = root / "run.msl"
+            ve_path = root / "ve.tsv"
+            afr_path = root / "afr.tsv"
+            output_path = root / "ve-new.csv"
+            log_path.write_text(LOG_TEXT, encoding="utf-8")
+            ve_path.write_text(VE_TABLE, encoding="utf-8")
+            afr_path.write_text(AFR_TABLE, encoding="utf-8")
+
+            payload = analyse_payload(
+                {
+                    "log_paths": [str(log_path)],
+                    "ve_path": str(ve_path),
+                    "afr_path": str(afr_path),
+                    "output_path": str(output_path),
+                    "parameters": {"min_samples": "1"},
+                }
+            )
+
+            self.assertTrue(output_path.exists())
+            self.assertIn("MAP/RPM,1000,2000", output_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["summary"]["accepted_rows"], 3)
 
 
 if __name__ == "__main__":
