@@ -38,6 +38,8 @@ def main(argv: list[str] | None = None) -> int:
         min_samples_per_cell=args.min_samples,
         min_cell_weight=args.min_cell_weight,
         authority=args.authority,
+        min_sample_authority=args.min_sample_authority,
+        full_authority_samples=args.full_authority_samples,
         max_sample_correction=args.max_sample_correction,
         max_cell_change=args.max_cell_change,
         smoothing_passes=args.smoothing_passes,
@@ -91,6 +93,18 @@ def build_parser() -> argparse.ArgumentParser:
     algorithm.add_argument("--min-samples", type=int, default=3, help="Minimum samples required before changing a cell.")
     algorithm.add_argument("--min-cell-weight", type=float, default=0.0, help="Minimum weighted evidence before changing a cell.")
     algorithm.add_argument("--authority", type=float, default=1.0, help="Fraction of calculated correction to apply.")
+    algorithm.add_argument(
+        "--min-sample-authority",
+        type=float,
+        default=0.35,
+        help="Minimum authority multiplier when a cell just reaches the sample threshold.",
+    )
+    algorithm.add_argument(
+        "--full-authority-samples",
+        type=int,
+        default=30,
+        help="Samples required for a cell to receive full configured authority.",
+    )
     algorithm.add_argument("--max-sample-correction", type=float, default=0.25, help="Per-sample correction limit as a fraction.")
     algorithm.add_argument("--max-cell-change", type=float, default=0.15, help="Per-run cell change limit as a fraction.")
     algorithm.add_argument("--smoothing-passes", type=int, default=0)

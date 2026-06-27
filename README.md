@@ -38,6 +38,8 @@ python -m ve_analyse `
   --max-tpsacc 105 `
   --min-samples 3 `
   --authority 0.8 `
+  --min-sample-authority 0.35 `
+  --full-authority-samples 30 `
   --max-cell-change 0.12
 ```
 
@@ -73,7 +75,7 @@ The web UI has:
 - multiple graph tracks where each graph can contain its own selected variables,
 - shared X-axis zooming with mouse wheel, drag-to-zoom, zoom-out, and reset controls,
 - grouped analysis tunables,
-- a results view showing the summary and changed VE cells,
+- a results view showing the summary, old/new VE tables, delta map, and sample map,
 - optional output path; if it is blank or not writable, the generated VE table can be downloaded from the Results view,
 - automatic session restore using `.ve-analyse-web-state.json` in the directory where the server was launched.
 
@@ -101,7 +103,9 @@ For each accepted log row:
 3. Interpolate the target AFR table at that RPM/MAP point.
 4. Calculate the fuel correction as `measured AFR / target AFR`.
 5. Apply the correction to the surrounding VE cells using bilinear weights.
-6. Average corrections per cell, apply authority and change limits, and write the new VE value.
+6. Average corrections per cell.
+7. Scale authority by per-cell sample confidence: cells at the minimum sample threshold use `min_sample_authority`, and cells at or above `full_authority_samples` use full configured authority.
+8. Apply authority and change limits, then write the new VE value.
 
 The main safety/tuning parameters are exposed in `ve_analyse.analyzer.AnalyzerConfig` and on the CLI.
 

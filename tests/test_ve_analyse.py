@@ -33,6 +33,18 @@ AFR_TABLE = """MAP/RPM\t1000\t2000
 """
 
 
+def repeated_log(sample_count: int) -> str:
+    lines = LOG_TEXT.splitlines()
+    prefix = lines[:4]
+    sample = lines[4].split("\t")
+    rows = []
+    for index in range(sample_count):
+        row = list(sample)
+        row[0] = f"{index * 0.081:.3f}"
+        rows.append("\t".join(row))
+    return "\n".join([*prefix, *rows]) + "\n"
+
+
 class VeAnalyseTests(unittest.TestCase):
     def test_parse_datalog_megasquirt_format(self):
         log = parse_datalog(LOG_TEXT, source="inline")
@@ -50,13 +62,37 @@ class VeAnalyseTests(unittest.TestCase):
             [log],
             ve,
             afr,
-            AnalyzerConfig(min_samples_per_cell=1, output_decimals=3),
+            AnalyzerConfig(
+                min_samples_per_cell=1,
+                min_sample_authority=1.0,
+                full_authority_samples=1,
+                output_decimals=3,
+            ),
         )
 
         self.assertEqual(result.accepted_rows, 3)
         self.assertEqual(result.table.values[0][0], 40.816)
         self.assertEqual(result.table.values[0][1], 50)
         self.assertEqual(result.table.values[1][0], 60)
+
+    def test_sample_count_confidence_ramps_cell_authority(self):
+        ve = parse_table(VE_TABLE, source="ve")
+        afr = parse_table(AFR_TABLE, source="afr")
+        config = AnalyzerConfig(
+            min_samples_per_cell=3,
+            min_sample_authority=0.35,
+            full_authority_samples=30,
+            output_decimals=3,
+        )
+
+        low_sample = analyze([parse_datalog(repeated_log(3), source="low")], ve, afr, config)
+        high_sample = analyze([parse_datalog(repeated_log(30), source="high")], ve, afr, config)
+
+        self.assertEqual(low_sample.updates[0].samples, 3)
+        self.assertEqual(high_sample.updates[0].samples, 30)
+        self.assertEqual(low_sample.table.values[0][0], 40.286)
+        self.assertEqual(high_sample.table.values[0][0], 40.816)
+        self.assertLess(low_sample.table.values[0][0], high_sample.table.values[0][0])
 
     def test_bilinear_distribution_touches_surrounding_cells(self):
         log_text = LOG_TEXT.replace("\t40\t10\t2.500", "\t50\t10\t2.500").replace("\t1000", "\t1500")
@@ -154,6 +190,8 @@ class VeAnalyseTests(unittest.TestCase):
 
             self.assertEqual(payload["parameters"]["min_clt"], "60")
             self.assertEqual(payload["parameters"]["distribution"], "bilinear")
+            self.assertEqual(payload["parameters"]["min_sample_authority"], "0.35")
+            self.assertEqual(payload["parameters"]["full_authority_samples"], "30")
 
     def test_web_graph_payload_builds_stacked_series_data(self):
         with TemporaryDirectory() as temp_dir:
@@ -198,7 +236,7 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(payload["result_tables"]["delta"]["x_bins"], [1000.0, 2000.0])
             self.assertEqual(payload["result_tables"]["delta"]["y_bins"], [60.0, 40.0])
             self.assertIsNone(payload["result_tables"]["delta"]["values"][0][0])
-            self.assertAlmostEqual(payload["result_tables"]["delta"]["values"][1][0], 2.05, places=2)
+            self.assertAlmostEqual(payload["result_tables"]["delta"]["values"][1][0], 0.725, places=3)
             self.assertEqual(payload["result_tables"]["samples"]["values"][1][0], 3)
 
     def test_web_analyse_payload_returns_download_csv_when_output_write_fails(self):

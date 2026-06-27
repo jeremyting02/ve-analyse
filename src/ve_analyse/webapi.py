@@ -25,6 +25,8 @@ DEFAULT_WEB_PARAMETERS: dict[str, str] = {
     "max_sample_correction": "0.25",
     "max_cell_change": "0.15",
     "min_samples": "3",
+    "min_sample_authority": "0.35",
+    "full_authority_samples": "30",
     "min_cell_weight": "0",
     "smoothing_passes": "0",
     "smoothing_factor": "0.20",
@@ -237,6 +239,8 @@ def _display_axis_orders(table: GridTable) -> tuple[list[int], list[int]]:
 def config_from_parameters(parameters: dict[str, str]) -> AnalyzerConfig:
     values = dict(DEFAULT_WEB_PARAMETERS)
     values.update(parameters)
+    min_sample_authority = _float(values.get("min_sample_authority"), 0.35)
+    full_authority_samples = _float(values.get("full_authority_samples"), 30)
     return AnalyzerConfig(
         min_rpm=_float(values.get("min_rpm"), 400.0) or 400.0,
         min_clt=_optional_float(values.get("min_clt")),
@@ -252,6 +256,8 @@ def config_from_parameters(parameters: dict[str, str]) -> AnalyzerConfig:
         min_samples_per_cell=int(_float(values.get("min_samples"), 3) or 3),
         min_cell_weight=_float(values.get("min_cell_weight"), 0.0) or 0.0,
         authority=_float(values.get("authority"), 1.0) or 1.0,
+        min_sample_authority=min_sample_authority if min_sample_authority is not None else 0.35,
+        full_authority_samples=int(full_authority_samples if full_authority_samples is not None else 30),
         max_sample_correction=_float(values.get("max_sample_correction"), 0.25) or 0.25,
         max_cell_change=_float(values.get("max_cell_change"), 0.15) or 0.15,
         smoothing_passes=int(_float(values.get("smoothing_passes"), 0) or 0),

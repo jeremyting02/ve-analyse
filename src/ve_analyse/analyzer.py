@@ -45,6 +45,8 @@ class AnalyzerConfig:
     min_samples_per_cell: int = 3
     min_cell_weight: float = 0.0
     authority: float = 1.0
+    min_sample_authority: float = 0.35
+    full_authority_samples: int = 30
     max_sample_correction: float = 0.25
     max_cell_change: float = 0.15
     smoothing_passes: int = 0
@@ -204,7 +206,13 @@ def analyze(
                 continue
 
             correction = _limit_ratio(accumulator.correction, config.max_cell_change)
-            applied = 1.0 + (correction - 1.0) * config.authority
+            sample_confidence = _sample_confidence(
+                accumulator.samples,
+                min_samples=config.min_samples_per_cell,
+                min_sample_authority=config.min_sample_authority,
+                full_authority_samples=config.full_authority_samples,
+            )
+            applied = 1.0 + (correction - 1.0) * config.authority * sample_confidence
             old_ve = ve_table.values[row_index][col_index]
             new_ve = max(0.0, old_ve * applied)
             new_values[row_index][col_index] = new_ve
@@ -406,6 +414,22 @@ def _limit_ratio(ratio: float, max_change: float) -> float:
     if max_change < 0:
         raise ValueError("max change must be non-negative")
     return min(1.0 + max_change, max(1.0 - max_change, ratio))
+
+
+def _sample_confidence(
+    samples: int,
+    *,
+    min_samples: int,
+    min_sample_authority: float,
+    full_authority_samples: int,
+) -> float:
+    if samples < min_samples:
+        return 0.0
+    floor = min(1.0, max(0.0, min_sample_authority))
+    if full_authority_samples <= min_samples:
+        return 1.0
+    progress = (samples - min_samples) / (full_authority_samples - min_samples)
+    return min(1.0, max(floor, progress))
 
 
 def _smooth_touched_cells(

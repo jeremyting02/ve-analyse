@@ -12,6 +12,8 @@ const defaultParameters = {
   max_sample_correction: "0.25",
   max_cell_change: "0.15",
   min_samples: "3",
+  min_sample_authority: "0.35",
+  full_authority_samples: "30",
   min_cell_weight: "0",
   smoothing_passes: "0",
   smoothing_factor: "0.20",
