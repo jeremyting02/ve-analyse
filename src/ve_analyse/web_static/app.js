@@ -698,8 +698,10 @@ async function runAnalyse() {
     activateView("Results");
     if (result.output_saved) {
       setStatus("Analysis complete.", "status-ok");
+    } else if (result.output_save_attempted) {
+      setStatus("Analysis complete. Output path was not writable, so use Download CSV.", "status-warning");
     } else {
-      setStatus("Analysis complete. Output path was not writable, so use Download CSV.", "status-error");
+      setStatus("Analysis complete. Use Download CSV to save.", "status-warning");
     }
     await saveState();
   } catch (error) {
@@ -710,6 +712,13 @@ async function runAnalyse() {
 function resultSummaryText(result) {
   if (result.output_saved) {
     return `${result.summary_text}\nWrote: ${result.output_path}`;
+  }
+  if (!result.output_save_attempted) {
+    return [
+      result.summary_text,
+      "No output path entered.",
+      "Use Download CSV below to save the generated VE table from the browser.",
+    ].join("\n");
   }
   return [
     result.summary_text,

@@ -74,6 +74,7 @@ The web UI has:
 - shared X-axis zooming with mouse wheel, drag-to-zoom, zoom-out, and reset controls,
 - grouped analysis tunables,
 - a results view showing the summary and changed VE cells,
+- optional output path; if it is blank or not writable, the generated VE table can be downloaded from the Results view,
 - automatic session restore using `.ve-analyse-web-state.json` in the directory where the server was launched.
 
 If Tkinter is available in your Python installation:

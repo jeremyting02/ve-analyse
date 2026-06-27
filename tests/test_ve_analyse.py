@@ -219,8 +219,35 @@ class VeAnalyseTests(unittest.TestCase):
                 )
 
             self.assertFalse(payload["output_saved"])
+            self.assertTrue(payload["output_save_attempted"])
             self.assertIn("blocked", payload["output_error"])
             self.assertEqual(payload["output_filename"], "blocked.csv")
+            self.assertIn("MAP/RPM,1000,2000", payload["output_csv"])
+
+    def test_web_analyse_payload_allows_blank_output_path(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log_path = root / "run.msl"
+            ve_path = root / "ve.tsv"
+            afr_path = root / "afr.tsv"
+            log_path.write_text(LOG_TEXT, encoding="utf-8")
+            ve_path.write_text(VE_TABLE, encoding="utf-8")
+            afr_path.write_text(AFR_TABLE, encoding="utf-8")
+
+            payload = analyse_payload(
+                {
+                    "log_paths": [str(log_path)],
+                    "ve_path": str(ve_path),
+                    "afr_path": str(afr_path),
+                    "output_path": "",
+                    "parameters": {"min_samples": "1"},
+                }
+            )
+
+            self.assertFalse(payload["output_saved"])
+            self.assertFalse(payload["output_save_attempted"])
+            self.assertEqual(payload["output_path"], "")
+            self.assertEqual(payload["output_filename"], "ve-new.csv")
             self.assertIn("MAP/RPM,1000,2000", payload["output_csv"])
 
     def test_web_table_payload_sorts_rpm_ascending_and_map_descending(self):

@@ -110,7 +110,7 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     ve_path = _required_path(payload.get("ve_path"), "VE table")
     afr_path = _required_path(payload.get("afr_path"), "AFR target table")
-    output_path = _required_path(payload.get("output_path"), "output VE table")
+    output_path = _optional_path(payload.get("output_path"))
     parameters = _string_dict(payload.get("parameters"))
     config = config_from_parameters(parameters)
 
@@ -119,13 +119,15 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
     afr_table = parse_table(afr_path)
     result = analyze(logs, ve_table, afr_table, config)
     output_csv = format_table(result.table, decimals=config.output_decimals)
-    output_saved = True
+    output_saved = False
     output_error = ""
-    try:
-        output_path.write_text(output_csv, encoding="utf-8")
-    except OSError as exc:
-        output_saved = False
-        output_error = str(exc)
+    output_save_attempted = output_path is not None
+    if output_path is not None:
+        try:
+            output_path.write_text(output_csv, encoding="utf-8")
+            output_saved = True
+        except OSError as exc:
+            output_error = str(exc)
 
     updates = []
     for update in result.updates:
@@ -152,11 +154,12 @@ def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "old": table_payload(ve_table),
             "new": table_payload(result.table),
         },
-        "output_path": str(output_path),
+        "output_path": str(output_path) if output_path is not None else "",
         "output_saved": output_saved,
+        "output_save_attempted": output_save_attempted,
         "output_error": output_error,
         "output_csv": output_csv,
-        "output_filename": output_path.name or "ve-new.csv",
+        "output_filename": output_path.name if output_path is not None and output_path.name else "ve-new.csv",
     }
 
 
@@ -208,6 +211,11 @@ def _required_path(value: Any, label: str) -> Path:
     if not raw_path:
         raise ValueError(f"Choose a {label}.")
     return Path(raw_path)
+
+
+def _optional_path(value: Any) -> Path | None:
+    raw_path = _as_string(value).strip()
+    return Path(raw_path) if raw_path else None
 
 
 def _optional_float(value: str | None) -> float | None:

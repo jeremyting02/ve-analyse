@@ -10,6 +10,7 @@
   --accent-strong: #1d4ed8;
   --danger: #b42318;
   --good: #067647;
+  --warning: #a15c00;
 }
 
 * {
@@ -532,6 +533,10 @@ td:first-child {
 
 .status-error {
   color: var(--danger);
+}
+
+.status-warning {
+  color: var(--warning);
 }
 
 @media (max-width: 960px) {
