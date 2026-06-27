@@ -23,8 +23,9 @@
           </div>
           <label class="field">
             <span>Data log path</span>
-            <div class="path-row">
+            <div class="path-row multi-action">
               <input id="logPathInput" type="text" placeholder="C:\path\run.msl">
+              <button id="browseLog" type="button">Browse</button>
               <button id="addLog" type="button">Add</button>
             </div>
           </label>
@@ -32,15 +33,24 @@
 
           <label class="field">
             <span>VE table</span>
-            <input id="vePath" type="text" placeholder="C:\path\ve.csv">
+            <div class="path-row">
+              <input id="vePath" type="text" placeholder="C:\path\ve.csv">
+              <button id="browseVe" type="button">Browse</button>
+            </div>
           </label>
           <label class="field">
             <span>AFR target table</span>
-            <input id="afrPath" type="text" placeholder="C:\path\afr.csv">
+            <div class="path-row">
+              <input id="afrPath" type="text" placeholder="C:\path\afr.csv">
+              <button id="browseAfr" type="button">Browse</button>
+            </div>
           </label>
           <label class="field">
             <span>Output CSV optional</span>
-            <input id="outputPath" type="text" placeholder="C:\path\ve-new.csv">
+            <div class="path-row">
+              <input id="outputPath" type="text" placeholder="C:\path\ve-new.csv">
+              <button id="browseOutput" type="button">Browse</button>
+            </div>
           </label>
           <button id="runAnalyse" type="button" class="primary sidebar-action">Run analyse</button>
         </section>

@@ -8,7 +8,7 @@ from ve_analyse.datalog import parse_datalog
 from ve_analyse.graph import build_plot_series, detect_time_column, numeric_columns
 from ve_analyse.state import UiState, load_ui_state, save_ui_state
 from ve_analyse.table import format_table, parse_table
-from ve_analyse.webapi import analyse_payload, graph_payload, state_payload, table_payload
+from ve_analyse.webapi import analyse_payload, graph_payload, pick_path_payload, state_payload, table_payload
 
 
 LOG_TEXT = """"MS/Extra format hr_11d  ********: MS/Extra hr_11d  ***************"
@@ -203,6 +203,19 @@ class VeAnalyseTests(unittest.TestCase):
             self.assertEqual(payload["row_count"], 3)
             self.assertEqual([item["name"] for item in payload["series"]], ["O2", "RPM"])
             self.assertEqual(payload["series"][0]["points"][0], (0.0, 2.5))
+
+    def test_web_pick_path_payload_uses_open_and_save_dialogs(self):
+        with patch("ve_analyse.webapi._pick_path_with_tk", return_value="C:\\Data\\run.msl") as picker:
+            log_payload = pick_path_payload({"purpose": "log", "initial_path": "C:\\Data"})
+
+        self.assertEqual(log_payload["path"], "C:\\Data\\run.msl")
+        self.assertEqual(picker.call_args.kwargs["mode"], "open")
+
+        with patch("ve_analyse.webapi._pick_path_with_tk", return_value="C:\\Data\\ve-new.csv") as picker:
+            output_payload = pick_path_payload({"purpose": "output", "initial_path": "C:\\Data\\ve-new.csv"})
+
+        self.assertEqual(output_payload["path"], "C:\\Data\\ve-new.csv")
+        self.assertEqual(picker.call_args.kwargs["mode"], "save")
 
     def test_web_analyse_payload_writes_csv_output(self):
         with TemporaryDirectory() as temp_dir:

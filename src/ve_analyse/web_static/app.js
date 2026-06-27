@@ -960,6 +960,48 @@ function formatSignedPercent(value) {
   return `${prefix}${formatNumber(number)}%`;
 }
 
+async function pickPath(purpose, initialPath = "") {
+  setStatus("Opening file picker...");
+  try {
+    const result = await api("/api/pick-path", {
+      method: "POST",
+      body: JSON.stringify({
+        purpose,
+        initial_path: initialPath,
+      }),
+    });
+    if (!result.path) {
+      setStatus("File selection cancelled.");
+      return "";
+    }
+    return result.path;
+  } catch (error) {
+    setStatus(error.message, "status-error");
+    return "";
+  }
+}
+
+async function browseLogPath() {
+  const fallbackPath = state.graph_log || state.log_paths[state.log_paths.length - 1] || "";
+  const selectedPath = await pickPath("log", $("logPathInput").value.trim() || fallbackPath);
+  if (!selectedPath) {
+    return;
+  }
+  addLogPath(selectedPath);
+  setStatus(`Added log: ${selectedPath}`, "status-ok");
+}
+
+async function browsePathField(purpose, inputId, label) {
+  const selectedPath = await pickPath(purpose, $(inputId).value.trim());
+  if (!selectedPath) {
+    return;
+  }
+  $(inputId).value = selectedPath;
+  collectFormState();
+  debounceSave();
+  setStatus(`${label} selected.`, "status-ok");
+}
+
 function collectFormState() {
   state.ve_path = $("vePath").value.trim();
   state.afr_path = $("afrPath").value.trim();
@@ -1081,6 +1123,10 @@ function formatNumber(value) {
 
 function wireEvents() {
   $("addLog").addEventListener("click", () => addLogPath($("logPathInput").value));
+  $("browseLog").addEventListener("click", browseLogPath);
+  $("browseVe").addEventListener("click", () => browsePathField("ve", "vePath", "VE table"));
+  $("browseAfr").addEventListener("click", () => browsePathField("afr", "afrPath", "AFR target table"));
+  $("browseOutput").addEventListener("click", () => browsePathField("output", "outputPath", "Output path"));
   $("logPathInput").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       addLogPath(event.currentTarget.value);

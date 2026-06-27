@@ -64,6 +64,8 @@ class VeAnalyseHandler(BaseHTTPRequestHandler):
                 )
             elif parsed.path == "/api/analyze":
                 self._send_json(webapi.analyse_payload(payload))
+            elif parsed.path == "/api/pick-path":
+                self._send_json(webapi.pick_path_payload(payload))
             else:
                 self._send_error(HTTPStatus.NOT_FOUND, "Not found")
         except Exception as exc:

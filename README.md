@@ -72,6 +72,7 @@ http://127.0.0.1:8765/
 The web UI has:
 
 - a session sidebar for log/table/output paths,
+- browse buttons that open native file pickers for those paths,
 - multiple graph tracks where each graph can contain its own selected variables,
 - shared X-axis zooming with mouse wheel, drag-to-zoom, zoom-out, and reset controls,
 - grouped analysis tunables,

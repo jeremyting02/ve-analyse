@@ -105,6 +105,20 @@ def graph_payload(path: str, variables: list[str], max_points_per_series: int = 
     }
 
 
+def pick_path_payload(payload: dict[str, Any]) -> dict[str, str]:
+    purpose = _as_string(payload.get("purpose")) or "log"
+    initial_path = _as_string(payload.get("initial_path")).strip()
+    mode, title, filetypes, default_extension = _picker_options(purpose)
+    path = _pick_path_with_tk(
+        mode=mode,
+        title=title,
+        filetypes=filetypes,
+        initial_path=initial_path,
+        default_extension=default_extension,
+    )
+    return {"path": path}
+
+
 def analyse_payload(payload: dict[str, Any]) -> dict[str, Any]:
     log_paths = _string_list(payload.get("log_paths"))
     if not log_paths:
@@ -322,3 +336,107 @@ def _dict_list(value: Any) -> list[dict[str, Any]]:
 
 def _plain_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _picker_options(purpose: str) -> tuple[str, str, list[tuple[str, str]], str]:
+    if purpose == "ve":
+        return (
+            "open",
+            "Choose VE table",
+            [
+                ("Table files", "*.csv *.tsv *.txt *.ve"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*"),
+            ],
+            ".csv",
+        )
+    if purpose == "afr":
+        return (
+            "open",
+            "Choose AFR target table",
+            [
+                ("Table files", "*.csv *.tsv *.txt *.afr"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*"),
+            ],
+            ".csv",
+        )
+    if purpose == "output":
+        return (
+            "save",
+            "Save new VE table as",
+            [
+                ("CSV files", "*.csv"),
+                ("All files", "*.*"),
+            ],
+            ".csv",
+        )
+    return (
+        "open",
+        "Choose data log",
+        [
+            ("Data logs", "*.msl *.csv *.tsv *.txt"),
+            ("MegaSquirt logs", "*.msl"),
+            ("All files", "*.*"),
+        ],
+        ".msl",
+    )
+
+
+def _pick_path_with_tk(
+    *,
+    mode: str,
+    title: str,
+    filetypes: list[tuple[str, str]],
+    initial_path: str,
+    default_extension: str,
+) -> str:
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as exc:
+        raise RuntimeError("File picker is not available in this Python installation.") from exc
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    initial_dir = _initial_directory(initial_path)
+    initial_file = _initial_file(initial_path)
+    try:
+        if mode == "save":
+            selected = filedialog.asksaveasfilename(
+                title=title,
+                initialdir=initial_dir,
+                initialfile=initial_file or "ve-new.csv",
+                defaultextension=default_extension,
+                filetypes=filetypes,
+                parent=root,
+            )
+        else:
+            selected = filedialog.askopenfilename(
+                title=title,
+                initialdir=initial_dir,
+                initialfile=initial_file,
+                filetypes=filetypes,
+                parent=root,
+            )
+    finally:
+        root.destroy()
+    return str(selected or "")
+
+
+def _initial_directory(path: str) -> str:
+    if not path:
+        return ""
+    candidate = Path(path).expanduser()
+    if candidate.is_dir():
+        return str(candidate)
+    parent = candidate.parent
+    return str(parent) if str(parent) != "." else ""
+
+
+def _initial_file(path: str) -> str:
+    if not path:
+        return ""
+    candidate = Path(path)
+    return candidate.name if candidate.name and candidate.suffix else ""
